@@ -19,4 +19,5 @@ module.exports = {
   coverageReporters: ['text', 'lcov', 'html'],
   setupFilesAfterEnv: ['<rootDir>/tests/setup.ts'],
   testTimeout: 30000, // 30 seconds for API calls
+  maxWorkers: 1, // Run tests sequentially to avoid file system interference
 };

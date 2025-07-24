@@ -18,34 +18,7 @@ export class ConfigLoader {
       excludeKeys: []
     };
 
-    // Try to find config file
-    const possibleConfigPaths = [
-      configPath,
-      'translatinator.config.js',
-      'translatinator.config.json',
-      '.translatinatorrc',
-      '.translatinatorrc.json'
-    ].filter(Boolean);
-
-    for (const configFile of possibleConfigPaths) {
-      if (await fs.pathExists(configFile!)) {
-        const fileExt = path.extname(configFile!);
-        let userConfig: Partial<TranslatinatorConfig> = {};
-
-        if (fileExt === '.js') {
-          // For JS files, we'll need to require them
-          const configModule = require(path.resolve(configFile!));
-          userConfig = configModule.default || configModule;
-        } else {
-          // For JSON files
-          userConfig = await fs.readJson(configFile!);
-        }
-
-        return { ...defaultConfig, ...userConfig } as TranslatinatorConfig;
-      }
-    }
-
-    // No config file found, check for environment variables
+    // Load environment variables first (lowest priority)
     const envConfig: Partial<TranslatinatorConfig> = {};
     
     if (process.env.DEEPL_API_KEY) {
@@ -60,6 +33,57 @@ export class ConfigLoader {
       envConfig.targetLanguages = process.env.TRANSLATINATOR_TARGET_LANGUAGES.split(',');
     }
 
+    // If a specific config path is provided, only try to load that file
+    if (configPath) {
+      if (await fs.pathExists(configPath)) {
+        const fileExt = path.extname(configPath);
+        let userConfig: Partial<TranslatinatorConfig> = {};
+
+        if (fileExt === '.js') {
+          // For JS files, we'll need to require them
+          const configModule = require(path.resolve(configPath));
+          userConfig = configModule.default || configModule;
+        } else {
+          // For JSON files
+          userConfig = await fs.readJson(configPath);
+        }
+
+        // Config file takes precedence over environment variables
+        return { ...defaultConfig, ...envConfig, ...userConfig } as TranslatinatorConfig;
+      }
+      
+      // If specific path was provided but doesn't exist, just use defaults + env vars
+      return { ...defaultConfig, ...envConfig } as TranslatinatorConfig;
+    }
+
+    // No specific path provided, search for config files in current directory
+    const possibleConfigPaths = [
+      'translatinator.config.js',
+      'translatinator.config.json',
+      '.translatinatorrc',
+      '.translatinatorrc.json'
+    ];
+
+    for (const configFile of possibleConfigPaths) {
+      if (await fs.pathExists(configFile)) {
+        const fileExt = path.extname(configFile);
+        let userConfig: Partial<TranslatinatorConfig> = {};
+
+        if (fileExt === '.js') {
+          // For JS files, we'll need to require them
+          const configModule = require(path.resolve(configFile));
+          userConfig = configModule.default || configModule;
+        } else {
+          // For JSON files
+          userConfig = await fs.readJson(configFile);
+        }
+
+        // Config file takes precedence over environment variables
+        return { ...defaultConfig, ...envConfig, ...userConfig } as TranslatinatorConfig;
+      }
+    }
+
+    // No config file found, use defaults + environment variables
     return { ...defaultConfig, ...envConfig } as TranslatinatorConfig;
   }
 

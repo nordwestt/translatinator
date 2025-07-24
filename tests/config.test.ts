@@ -61,11 +61,20 @@ describe('ConfigLoader', () => {
       process.env.TRANSLATINATOR_SOURCE_FILE = 'env-source.json';
       process.env.TRANSLATINATOR_TARGET_LANGUAGES = 'de,fr,es';
 
-      const config = await ConfigLoader.loadConfig();
+      // Create a temporary directory and change to it to avoid the existing config file
+      await fs.ensureDir(testDir);
+      const originalCwd = process.cwd();
       
-      expect(config.deeplApiKey).toBe('env-api-key');
-      expect(config.sourceFile).toBe('env-source.json');
-      expect(config.targetLanguages).toEqual(['de', 'fr', 'es']);
+      try {
+        process.chdir(testDir);
+        const config = await ConfigLoader.loadConfig();
+        
+        expect(config.deeplApiKey).toBe('env-api-key');
+        expect(config.sourceFile).toBe('env-source.json');
+        expect(config.targetLanguages).toEqual(['de', 'fr', 'es']);
+      } finally {
+        process.chdir(originalCwd);
+      }
     });
 
     it('should prioritize config file over environment variables', async () => {

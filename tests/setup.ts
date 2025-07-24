@@ -12,9 +12,15 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  // Clean up test directories
-  if (await fs.pathExists(testDir)) {
-    await fs.remove(testDir);
+  // Clean up test directories more aggressively
+  try {
+    if (await fs.pathExists(testDir)) {
+      await fs.emptyDir(testDir);
+      await fs.remove(testDir);
+    }
+  } catch (error) {
+    // Ignore cleanup errors - they're not critical
+    console.warn('Failed to clean up test directories:', error);
   }
 });
 

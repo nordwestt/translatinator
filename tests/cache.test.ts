@@ -10,6 +10,8 @@ describe('CacheManager', () => {
 
   beforeEach(async () => {
     testCacheDir = path.join((global as any).TEST_DIR, 'cache-test', Date.now().toString());
+    // Ensure the parent TEST_DIR exists
+    await fs.ensureDir((global as any).TEST_DIR);
     logger = new Logger(false);
     cacheManager = new CacheManager(testCacheDir, logger);
     await cacheManager.initialize();

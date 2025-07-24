@@ -81,14 +81,21 @@ export class Translatinator {
         this.logger.debug(`Loaded existing translations for ${targetLang}`);
       }
 
-      // Merge with existing data to preserve manual edits
-      const mergedData = this.config.force ? {} : { ...existingData };
-      
-      // Translate the source data
-      const translatedData = await this.translator.translateObject(sourceData, targetLang);
-      
-      // Merge translated data
-      const finalData = this.deepMerge(mergedData, translatedData);
+      // When not forcing, preserve existing translations and only add missing keys
+      let finalData: any;
+      if (this.config.force) {
+        // Force mode: completely replace with new translations
+        finalData = await this.translator.translateObject(sourceData, targetLang);
+      } else {
+        // Non-force mode: preserve existing values, only translate missing keys
+        finalData = { ...existingData };
+        const keysToTranslate = this.getMissingKeys(sourceData, existingData);
+        
+        if (Object.keys(keysToTranslate).length > 0) {
+          const newTranslations = await this.translator.translateObject(keysToTranslate, targetLang);
+          finalData = this.deepMerge(finalData, newTranslations);
+        }
+      }
 
       // Write the translated file
       await fs.writeJson(targetFilePath, finalData, { spaces: 2 });
@@ -117,6 +124,35 @@ export class Translatinator {
           result[key] = this.deepMerge(result[key] || {}, source[key]);
         } else {
           result[key] = source[key];
+        }
+      }
+    }
+
+    return result;
+  }
+
+  private getMissingKeys(source: any, existing: any): any {
+    if (typeof source !== 'object' || source === null) {
+      return source;
+    }
+
+    if (Array.isArray(source)) {
+      return source;
+    }
+
+    const result: any = {};
+
+    for (const key in source) {
+      if (source.hasOwnProperty(key)) {
+        if (!(key in existing)) {
+          // Key is missing, include it
+          result[key] = source[key];
+        } else if (typeof source[key] === 'object' && source[key] !== null && !Array.isArray(source[key])) {
+          // Recursively check nested objects
+          const nestedMissing = this.getMissingKeys(source[key], existing[key] || {});
+          if (Object.keys(nestedMissing).length > 0) {
+            result[key] = nestedMissing;
+          }
         }
       }
     }

@@ -155,22 +155,32 @@ describe('Index API', () => {
 
       mockConfigLoader.loadConfig.mockResolvedValue(mockConfig);
 
+      let capturedCallback: any = null;
       const mockCompiler = {
         hooks: {
           beforeCompile: {
             tapAsync: jest.fn((name, callback) => {
-              // Simulate webpack calling our hook
-              const hookCallback = jest.fn();
-              callback({}, hookCallback);
-              
-              // The hook should call the callback
-              expect(hookCallback).toHaveBeenCalled();
+              capturedCallback = callback;
             })
           }
         }
       };
 
       plugin.apply(mockCompiler);
+
+      expect(mockCompiler.hooks.beforeCompile.tapAsync).toHaveBeenCalledWith(
+        'TranslatinatorWebpackPlugin',
+        expect.any(Function)
+      );
+
+      // Simulate webpack calling our hook
+      const hookCallback = jest.fn();
+      if (capturedCallback) {
+        await capturedCallback({}, hookCallback);
+      }
+      
+      // The hook should call the callback
+      expect(hookCallback).toHaveBeenCalledWith();
     });
 
     it('should handle translation errors in webpack hook', async () => {
@@ -178,21 +188,32 @@ describe('Index API', () => {
       
       mockConfigLoader.loadConfig.mockRejectedValue(new Error('Config error'));
 
+      let capturedCallback: any = null;
       const mockCompiler = {
         hooks: {
           beforeCompile: {
             tapAsync: jest.fn((name, callback) => {
-              const hookCallback = jest.fn();
-              callback({}, hookCallback);
-              
-              // The hook should call the callback with error
-              expect(hookCallback).toHaveBeenCalledWith(expect.any(Error));
+              capturedCallback = callback;
             })
           }
         }
       };
 
       plugin.apply(mockCompiler);
+
+      expect(mockCompiler.hooks.beforeCompile.tapAsync).toHaveBeenCalledWith(
+        'TranslatinatorWebpackPlugin',
+        expect.any(Function)
+      );
+
+      // Simulate webpack calling our hook
+      const hookCallback = jest.fn();
+      if (capturedCallback) {
+        await capturedCallback({}, hookCallback);
+      }
+      
+      // The hook should call the callback with error
+      expect(hookCallback).toHaveBeenCalledWith(expect.any(Error));
     });
   });
 });

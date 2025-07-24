@@ -19,5 +19,5 @@ afterAll(async () => {
 });
 
 // Global test configuration
-global.TEST_DIR = testDir;
-global.CACHE_DIR = cacheDir;
+(global as any).TEST_DIR = testDir;
+(global as any).CACHE_DIR = cacheDir;

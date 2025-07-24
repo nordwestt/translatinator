@@ -1,10 +1,6 @@
 declare global {
-  namespace NodeJS {
-    interface Global {
-      TEST_DIR: string;
-      CACHE_DIR: string;
-    }
-  }
+  var TEST_DIR: string;
+  var CACHE_DIR: string;
 }
 
 export {};

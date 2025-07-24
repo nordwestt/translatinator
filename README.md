@@ -47,6 +47,12 @@ This creates a `translatinator.config.json` file:
 }
 ```
 
+**Configuration file discovery**: Translatinator will automatically look for configuration files in this order:
+- `translatinator.config.js`
+- `translatinator.config.json` 
+- `.translatinatorrc`
+- `.translatinatorrc.json`
+
 ### 2. Set up your source translation file
 
 Create your source language file (e.g., `locales/en.json`):
@@ -149,8 +155,11 @@ console.log(usage);
 Add the Translatinator webpack plugin to automatically translate during build:
 
 ```javascript
-// webpack.config.js
+// webpack.config.js (CommonJS)
 const { TranslatinatorWebpackPlugin } = require('translatinator');
+
+// or (ES6/TypeScript)
+import { TranslatinatorWebpackPlugin } from 'translatinator';
 
 module.exports = {
   // ... your webpack config

@@ -15,7 +15,6 @@ export class Translatinator {
 
   constructor(config: TranslatinatorConfig) {
     this.config = {
-      localesDir: './locales',
       deeplFree: true,
       watch: false,
       force: false,

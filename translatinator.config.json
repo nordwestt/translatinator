@@ -1,0 +1,14 @@
+{
+  "deeplApiKey": "your-deepl-api-key-here",
+  "sourceFile": "en.json",
+  "targetLanguages": ["de", "fr", "es", "it", "nl", "pl"],
+  "localesDir": "./locales",
+  "deeplFree": true,
+  "watch": false,
+  "force": false,
+  "filePattern": "{lang}.json",
+  "preserveFormatting": true,
+  "excludeKeys": ["version", "build", "debug"],
+  "cacheDir": ".translatinator-cache",
+  "verbose": false
+}

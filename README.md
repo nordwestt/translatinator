@@ -43,9 +43,7 @@
 
 ---
 
-## ⚡ **Install**
-
-### *"Come with me if you want to translate"*
+## ⚡ **Installation**
 
 ```bash
 npm install translatinator
@@ -171,12 +169,11 @@ npx translatinator init [-o, --output <path>]
 ### **🔴 GOOGLE TRANSLATE CORE** *(Default Hunter-Killer)*
 ```json
 {
-  "engine": "google"
+  "engine": "google",
+  "apiKey": "your-google-api-key"
 }
 ```
-- ✅ **No API key required** for basic operations
 - ✅ **Maximum language coverage** across all territories  
-- ⚠️ **Rate limited** for unauthorized usage
 
 ### **🟠 DEEPL NEURAL NETWORK** *(German Precision Engineering)*
 ```json

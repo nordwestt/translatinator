@@ -5,7 +5,7 @@ import * as path from 'path';
 
 // Mock the translator module
 jest.mock('../src/translator', () => ({
-  DeepLTranslator: jest.fn().mockImplementation(() => ({
+  TranslationService: jest.fn().mockImplementation(() => ({
     translateObject: jest.fn(),
     getUsage: jest.fn(),
   })),
@@ -26,18 +26,19 @@ describe('Translatinator', () => {
   let testDir: string;
 
   beforeEach(async () => {
-    const { DeepLTranslator } = require('../src/translator');
+    const { TranslationService } = require('../src/translator');
     mockTranslator = {
       translateObject: jest.fn(),
       getUsage: jest.fn(),
     };
-    (DeepLTranslator as jest.Mock).mockReturnValue(mockTranslator);
+    (TranslationService as jest.Mock).mockReturnValue(mockTranslator);
 
     testDir = path.join((global as any).TEST_DIR, 'translatinator-test', Date.now().toString());
     await fs.ensureDir(testDir);
 
     config = {
-      deeplApiKey: 'test-api-key',
+      engine: 'google',
+      apiKey: 'test-api-key',
       sourceFile: 'en.json',
       targetLanguages: ['de', 'fr'],
       localesDir: testDir,

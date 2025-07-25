@@ -3,26 +3,30 @@ import * as fs from 'fs-extra';
 import * as path from 'path';
 
 // Mock external dependencies
-jest.mock('deepl-node', () => ({
-  Translator: jest.fn().mockImplementation(() => ({
-    translateText: jest.fn().mockImplementation((text: string) => {
-      const translations: Record<string, string> = {
-        'Hello': 'Hallo',
-        'Welcome': 'Willkommen',
-        'Goodbye': 'Auf Wiedersehen',
-        'Home': 'Startseite',
-        'About': 'Über uns'
-      };
-      return Promise.resolve({
-        text: translations[text] || `DE: ${text}`,
-        detectedSourceLang: 'en'
-      });
-    }),
-    getUsage: jest.fn().mockResolvedValue({
-      character: { count: 1000, limit: 500000 }
-    }),
-  })),
-}));
+jest.mock('translate', () => {
+  const mockTranslate = jest.fn().mockImplementation((text: string) => {
+    const translations: Record<string, string> = {
+      'Hello': 'Hallo',
+      'Welcome': 'Willkommen',
+      'Goodbye': 'Auf Wiedersehen',
+      'Home': 'Startseite',
+      'About': 'Über uns'
+    };
+    return Promise.resolve(translations[text] || `DE: ${text}`);
+  });
+  
+  Object.defineProperty(mockTranslate, 'engine', {
+    value: 'google',
+    writable: true
+  });
+  
+  Object.defineProperty(mockTranslate, 'key', {
+    value: undefined,
+    writable: true
+  });
+  
+  return mockTranslate;
+});
 
 describe('Integration Tests', () => {
   let testDir: string;
@@ -65,7 +69,8 @@ describe('Integration Tests', () => {
 
       // 2. Create configuration
       const config = {
-        deeplApiKey: 'test-api-key',
+        engine: 'google',
+        apiKey: 'test-api-key',
         sourceFile: 'en.json',
         targetLanguages: ['de'],
         localesDir: localesDir,
@@ -126,7 +131,8 @@ describe('Integration Tests', () => {
 
       // 4. Create configuration
       const config = {
-        deeplApiKey: 'test-api-key',
+        engine: 'google',
+        apiKey: 'test-api-key',
         sourceFile: 'en.json',
         targetLanguages: ['de'],
         localesDir: localesDir,
@@ -157,7 +163,8 @@ describe('Integration Tests', () => {
 
       // 3. Create configuration with force enabled
       const config = {
-        deeplApiKey: 'test-api-key',
+        engine: 'google',
+        apiKey: 'test-api-key',
         sourceFile: 'en.json',
         targetLanguages: ['de'],
         localesDir: localesDir,
@@ -179,33 +186,34 @@ describe('Integration Tests', () => {
     it('should load configuration from different sources', async () => {
       // Test JSON config file
       const jsonConfig = {
-        deeplApiKey: 'json-key',
+        engine: 'google',
+        apiKey: 'json-key',
         sourceFile: 'json-en.json',
         targetLanguages: ['de', 'fr']
       };
       await fs.writeJson(configPath, jsonConfig);
 
       const config = await ConfigLoader.loadConfig(configPath);
-      expect(config.deeplApiKey).toBe('json-key');
+      expect(config.apiKey).toBe('json-key');
       expect(config.sourceFile).toBe('json-en.json');
       expect(config.targetLanguages).toEqual(['de', 'fr']);
     });
 
     it('should fall back to environment variables', async () => {
       // Set environment variables
-      process.env.DEEPL_API_KEY = 'env-api-key';
+      process.env.TRANSLATION_API_KEY = 'env-api-key';
       process.env.TRANSLATINATOR_SOURCE_FILE = 'env-source.json';
       process.env.TRANSLATINATOR_TARGET_LANGUAGES = 'de,fr,es';
 
       try {
         const config = await ConfigLoader.loadConfig('/nonexistent/config.json');
         
-        expect(config.deeplApiKey).toBe('env-api-key');
+        expect(config.apiKey).toBe('env-api-key');
         expect(config.sourceFile).toBe('env-source.json');
         expect(config.targetLanguages).toEqual(['de', 'fr', 'es']);
       } finally {
         // Clean up
-        delete process.env.DEEPL_API_KEY;
+        delete process.env.TRANSLATION_API_KEY;
         delete process.env.TRANSLATINATOR_SOURCE_FILE;
         delete process.env.TRANSLATINATOR_TARGET_LANGUAGES;
       }
@@ -220,7 +228,8 @@ describe('Integration Tests', () => {
 
       // 2. Create configuration
       const config = {
-        deeplApiKey: 'test-api-key',
+        engine: 'google',
+        apiKey: 'test-api-key',
         sourceFile: 'en.json',
         targetLanguages: ['de'],
         localesDir: localesDir,

@@ -43,7 +43,8 @@ describe('Index API', () => {
   describe('translate function', () => {
     it('should load config and run translation', async () => {
       const mockConfig = {
-        deeplApiKey: 'test-key',
+        engine: 'google',
+        apiKey: 'test-key',
         targetLanguages: ['de', 'fr'],
         sourceFile: 'en.json',
         localesDir: './locales'
@@ -67,12 +68,12 @@ describe('Index API', () => {
 
       mockConfigLoader.loadConfig.mockResolvedValue(mockConfig);
 
-      await expect(translate()).rejects.toThrow('DeepL API key is required');
+      await expect(translate()).rejects.toThrow('API key is required');
     });
 
     it('should throw error when target languages are missing', async () => {
       const mockConfig = {
-        deeplApiKey: 'test-key',
+        apiKey: 'test-key',
         targetLanguages: [],
         sourceFile: 'en.json',
         localesDir: './locales'
@@ -85,7 +86,7 @@ describe('Index API', () => {
 
     it('should start watching when watch is enabled', async () => {
       const mockConfig = {
-        deeplApiKey: 'test-key',
+        apiKey: 'test-key',
         targetLanguages: ['de', 'fr'],
         sourceFile: 'en.json',
         localesDir: './locales',

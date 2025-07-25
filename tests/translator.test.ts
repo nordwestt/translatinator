@@ -1,40 +1,42 @@
-import { DeepLTranslator } from '../src/translator';
+import { TranslationService } from '../src/translator';
 import { CacheManager } from '../src/cache';
 import { Logger } from '../src/logger';
 import { TranslatinatorConfig } from '../src/types';
 import * as path from 'path';
 
-// Mock the deepl-node module
-jest.mock('deepl-node', () => ({
-  Translator: jest.fn().mockImplementation(() => ({
-    translateText: jest.fn(),
-    getUsage: jest.fn(),
-  })),
-}));
+// Mock the translate module
+jest.mock('translate', () => {
+  const mockTranslate = jest.fn().mockImplementation((text: string) => {
+    const translations: Record<string, string> = {
+      'Hello': 'Hallo',
+      'Goodbye': 'Auf Wiedersehen', 
+      'Welcome': 'Willkommen'
+    };
+    return Promise.resolve(translations[text] || `Translated: ${text}`);
+  });
+  
+  mockTranslate.engine = 'google';
+  mockTranslate.key = undefined;
+  
+  return mockTranslate;
+});
 
-describe('DeepLTranslator', () => {
-  let translator: DeepLTranslator;
-  let mockDeepLTranslator: jest.Mocked<any>;
+describe('TranslationService', () => {
+  let translator: TranslationService;
   let cacheManager: CacheManager;
   let logger: Logger;
   let config: TranslatinatorConfig;
   let testCacheDir: string;
 
   beforeEach(async () => {
-    const deepl = require('deepl-node');
-    mockDeepLTranslator = {
-      translateText: jest.fn(),
-      getUsage: jest.fn(),
-    };
-    (deepl.Translator as jest.Mock).mockReturnValue(mockDeepLTranslator);
-
     testCacheDir = path.join((global as any).TEST_DIR, 'translator-test', Date.now().toString());
     logger = new Logger(false);
     cacheManager = new CacheManager(testCacheDir, logger);
     await cacheManager.initialize();
 
     config = {
-      deeplApiKey: 'test-api-key',
+      engine: 'google',
+      apiKey: 'test-api-key',
       sourceFile: 'en.json',
       targetLanguages: ['de', 'fr'],
       localesDir: './locales',
@@ -42,20 +44,18 @@ describe('DeepLTranslator', () => {
       excludeKeys: ['version', 'debug']
     };
 
-    translator = new DeepLTranslator(config, cacheManager, logger);
+    translator = new TranslationService(config, cacheManager, logger);
   });
 
   describe('translateText', () => {
-    it('should translate text using DeepL API', async () => {
-      mockDeepLTranslator.translateText.mockResolvedValue({
-        text: 'Hallo',
-        detectedSourceLang: 'en'
-      });
+    it('should translate text using translate library', async () => {
+      const translate = require('translate');
+      translate.mockResolvedValue('Hallo');
 
       const result = await translator.translateText('Hello', 'de');
 
       expect(result).toBe('Hallo');
-      expect(mockDeepLTranslator.translateText).toHaveBeenCalledWith('Hello', 'en', 'de');
+      expect(translate).toHaveBeenCalledWith('Hello', { from: 'en', to: 'de' });
     });
 
     it('should use cached translation when available and not forcing', async () => {
@@ -70,7 +70,8 @@ describe('DeepLTranslator', () => {
       const result = await translator.translateText('Hello', 'de');
 
       expect(result).toBe('Hallo (cached)');
-      expect(mockDeepLTranslator.translateText).not.toHaveBeenCalled();
+      const translate = require('translate');
+      expect(translate).not.toHaveBeenCalled();
     });
 
     it('should bypass cache when force is enabled', async () => {
@@ -84,24 +85,20 @@ describe('DeepLTranslator', () => {
 
       // Enable force mode
       config.force = true;
-      const forcedTranslator = new DeepLTranslator(config, cacheManager, logger);
+      const forcedTranslator = new TranslationService(config, cacheManager, logger);
 
-      mockDeepLTranslator.translateText.mockResolvedValue({
-        text: 'Hallo (fresh)',
-        detectedSourceLang: 'en'
-      });
+      const translate = require('translate');
+      translate.mockResolvedValue('Hallo (fresh)');
 
       const result = await forcedTranslator.translateText('Hello', 'de');
 
       expect(result).toBe('Hallo (fresh)');
-      expect(mockDeepLTranslator.translateText).toHaveBeenCalledWith('Hello', 'en', 'de');
+      expect(translate).toHaveBeenCalledWith('Hello', { from: 'en', to: 'de' });
     });
 
     it('should cache new translations', async () => {
-      mockDeepLTranslator.translateText.mockResolvedValue({
-        text: 'Bonjour',
-        detectedSourceLang: 'en'
-      });
+      const translate = require('translate');
+      translate.mockResolvedValue('Bonjour');
 
       await translator.translateText('Hello', 'fr');
 
@@ -112,7 +109,8 @@ describe('DeepLTranslator', () => {
     });
 
     it('should throw error when translation fails', async () => {
-      mockDeepLTranslator.translateText.mockRejectedValue(new Error('API Error'));
+      const translate = require('translate');
+      translate.mockRejectedValue(new Error('API Error'));
 
       await expect(translator.translateText('Hello', 'de')).rejects.toThrow('API Error');
     });
@@ -120,16 +118,14 @@ describe('DeepLTranslator', () => {
 
   describe('translateObject', () => {
     beforeEach(() => {
-      mockDeepLTranslator.translateText.mockImplementation((text: string) => {
+      const translate = require('translate');
+      translate.mockImplementation((text: string) => {
         const translations: Record<string, string> = {
           'Hello': 'Hallo',
           'Goodbye': 'Auf Wiedersehen',
           'Welcome': 'Willkommen'
         };
-        return Promise.resolve({
-          text: translations[text] || `Translated: ${text}`,
-          detectedSourceLang: 'en'
-        });
+        return Promise.resolve(translations[text] || `Translated: ${text}`);
       });
     });
 
@@ -226,24 +222,20 @@ describe('DeepLTranslator', () => {
   });
 
   describe('getUsage', () => {
-    it('should return API usage information', async () => {
-      const mockUsage = {
-        character: { count: 1000, limit: 500000 },
-        document: { count: 5, limit: 50 }
-      };
-
-      mockDeepLTranslator.getUsage.mockResolvedValue(mockUsage);
-
+    it('should return usage information with warning', async () => {
       const result = await translator.getUsage();
 
-      expect(result).toEqual(mockUsage);
-      expect(mockDeepLTranslator.getUsage).toHaveBeenCalled();
+      expect(result).toEqual({
+        character: { 
+          count: 0, 
+          limit: 'unlimited' 
+        },
+        engine: 'google'
+      });
     });
 
-    it('should throw error when API call fails', async () => {
-      mockDeepLTranslator.getUsage.mockRejectedValue(new Error('API Error'));
-
-      await expect(translator.getUsage()).rejects.toThrow('API Error');
+    it('should not throw error for usage calls', async () => {
+      await expect(translator.getUsage()).resolves.toBeDefined();
     });
   });
 });

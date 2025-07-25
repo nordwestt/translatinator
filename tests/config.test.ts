@@ -16,6 +16,7 @@ describe('ConfigLoader', () => {
     
     // Clean up environment variables
     delete process.env.DEEPL_API_KEY;
+    delete process.env.TRANSLATION_API_KEY;
     delete process.env.TRANSLATINATOR_SOURCE_FILE;
     delete process.env.TRANSLATINATOR_TARGET_LANGUAGES;
   });
@@ -25,7 +26,8 @@ describe('ConfigLoader', () => {
       await fs.ensureDir(testDir);
       const configPath = path.join(testDir, 'test.config.json');
       const testConfig = {
-        deeplApiKey: 'test-key',
+        engine: 'google',
+        apiKey: 'test-key',
         sourceFile: 'test-en.json',
         targetLanguages: ['de', 'fr'],
         localesDir: './test-locales'
@@ -34,7 +36,7 @@ describe('ConfigLoader', () => {
       await fs.writeJson(configPath, testConfig);
 
       const config = await ConfigLoader.loadConfig(configPath);
-      expect(config.deeplApiKey).toBe('test-key');
+      expect(config.apiKey).toBe('test-key');
       expect(config.sourceFile).toBe('test-en.json');
       expect(config.targetLanguages).toEqual(['de', 'fr']);
       expect(config.localesDir).toBe('./test-locales');
@@ -45,7 +47,6 @@ describe('ConfigLoader', () => {
       
       expect(config.sourceFile).toBe('en.json');
       expect(config.localesDir).toBe('./locales');
-      expect(config.deeplFree).toBe(true);
       expect(config.watch).toBe(false);
       expect(config.force).toBe(false);
       expect(config.filePattern).toBe('{lang}.json');
@@ -57,7 +58,7 @@ describe('ConfigLoader', () => {
     });
 
     it('should load config from environment variables', async () => {
-      process.env.DEEPL_API_KEY = 'env-api-key';
+      process.env.TRANSLATION_API_KEY = 'env-api-key';
       process.env.TRANSLATINATOR_SOURCE_FILE = 'env-source.json';
       process.env.TRANSLATINATOR_TARGET_LANGUAGES = 'de,fr,es';
 
@@ -69,7 +70,7 @@ describe('ConfigLoader', () => {
         process.chdir(testDir);
         const config = await ConfigLoader.loadConfig();
         
-        expect(config.deeplApiKey).toBe('env-api-key');
+        expect(config.apiKey).toBe('env-api-key');
         expect(config.sourceFile).toBe('env-source.json');
         expect(config.targetLanguages).toEqual(['de', 'fr', 'es']);
       } finally {
@@ -78,13 +79,13 @@ describe('ConfigLoader', () => {
     });
 
     it('should prioritize config file over environment variables', async () => {
-      process.env.DEEPL_API_KEY = 'env-api-key';
+      process.env.TRANSLATION_API_KEY = 'env-api-key';
       process.env.TRANSLATINATOR_SOURCE_FILE = 'env-source.json';
 
       await fs.ensureDir(testDir);
       const configPath = path.join(testDir, 'test.config.json');
       const testConfig = {
-        deeplApiKey: 'file-api-key',
+        apiKey: 'file-api-key',
         sourceFile: 'file-source.json'
       };
 
@@ -92,7 +93,7 @@ describe('ConfigLoader', () => {
 
       const config = await ConfigLoader.loadConfig(configPath);
       
-      expect(config.deeplApiKey).toBe('file-api-key');
+      expect(config.apiKey).toBe('file-api-key');
       expect(config.sourceFile).toBe('file-source.json');
     });
 
@@ -105,14 +106,14 @@ describe('ConfigLoader', () => {
 
       try {
         const testConfig = {
-          deeplApiKey: 'found-key',
+          apiKey: 'found-key',
           sourceFile: 'found.json'
         };
 
         await fs.writeJson('translatinator.config.json', testConfig);
 
         const config = await ConfigLoader.loadConfig();
-        expect(config.deeplApiKey).toBe('found-key');
+        expect(config.apiKey).toBe('found-key');
         expect(config.sourceFile).toBe('found.json');
       } finally {
         process.chdir(originalCwd);
@@ -131,7 +132,8 @@ describe('ConfigLoader', () => {
       expect(exists).toBe(true);
 
       const config = await fs.readJson(outputPath);
-      expect(config.deeplApiKey).toBe('your-deepl-api-key-here');
+      expect(config.engine).toBe('google');
+      expect(config.apiKey).toBe('your-api-key-here');
       expect(config.sourceFile).toBe('en.json');
       expect(config.targetLanguages).toEqual(['de', 'fr', 'es', 'it', 'nl', 'pl']);
       expect(config.localesDir).toBe('./locales');

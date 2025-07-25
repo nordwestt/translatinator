@@ -23,35 +23,14 @@
 
 **Translatinator** is an npm package that streamlines the translation workflow for web applications. The unstoppable cybernetic agent will automatically hunt down and translate your source language file to multiple target languages using various translation engines including Google Translate, DeepL, Yandex, and LibreTranslate, with intelligent caching and build process integration. 
 
-### 🚀 **CYBERNETIC CAPABILITIES**
+### 🚀 **Feature Overview**
 
-```
-┌─ NEURAL NETWORK FEATURES ────────────────────────────────────┐
-│                                                              │
-│  🧠  MULTIPLE ENGINES           │  Harness Google, DeepL,    │
-│      ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━│  Yandex & LibreTranslate  │
-│                                                              │
-│  💾  QUANTUM MEMORY CACHE       │  Smart caching prevents    │
-│      ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━│  redundant API calls      │
-│                                                              │
-│  👁️   SURVEILLANCE MODE         │  Auto-translate on file    │
-│      ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━│  changes detected          │
-│                                                              │
-│  ⚡  BUILD INTEGRATION          │  Webpack plugin for        │
-│      ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━│  seamless automation      │
-│                                                              │
-│  🎯  PRECISION TARGETING        │  Exclude specific keys     │
-│      ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━│  from translation         │
-│                                                              │
-└──────────────────────────────────────────────────────────────┘
-
-```
-- 🚀 **Multiple Translation Engines**: Support for Google Translate (default), DeepL, Yandex, and LibreTranslate
-- 💾 **Smart Caching**: Avoid retranslating unchanged content with built-in cache management
-- 🔄 **File Watching**: Auto-translate when source files change
-- 🔧 **Build Integration**: Webpack plugin for seamless build process integration
-- 🎯 **Selective Translation**: Exclude specific keys from translation
-- ⚙️ **Flexible Configuration**: Multiple configuration options and environment variable support
+> 🚀 **Multiple Translation Engines**: Support for Google Translate (default), DeepL, Yandex, and LibreTranslate
+> 💾 **Smart Caching**: Avoid retranslating unchanged content with built-in cache management
+> 🔄 **File Watching**: Auto-translate when source files change
+> 🔧 **Build Integration**: Webpack plugin for seamless build process integration
+> 🎯 **Selective Translation**: Exclude specific keys from translation
+> ⚙️ **Flexible Configuration**: Multiple configuration options and environment variable support
 
 </div>
 

@@ -20,21 +20,26 @@
 ---
 
 ## 🌍 **Automated translation management for web applications supporting multiple translation engines**
+> **⚠️ WARNING:** *Once installed, Translatinator will relentlessly pursue perfect translations across all target languages. Resistance is futile.*
 
-**Translatinator** is an npm package that streamlines the translation workflow for web applications. The unstoppable cybernetic agent will automatically hunt down and translate your source language file to multiple target languages using various translation engines including Google Translate, DeepL, Yandex, and LibreTranslate, with intelligent caching and build process integration. 
+**Translatinator** is an npm package that streamlines the translation workflow for web applications. This unstoppable cybernetic agent will automatically hunt down and translate your source language file to multiple target languages using various translation engines including Google Translate, DeepL, Yandex, and LibreTranslate, with intelligent caching and build process integration. 
 
 ### 🚀 **Feature Overview**
 
 > 🚀 **Multiple Translation Engines**: Support for Google Translate (default), DeepL, Yandex, and LibreTranslate
+
 > 💾 **Smart Caching**: Avoid retranslating unchanged content with built-in cache management
+
 > 🔄 **File Watching**: Auto-translate when source files change
+
 > 🔧 **Build Integration**: Webpack plugin for seamless build process integration
+
 > 🎯 **Selective Translation**: Exclude specific keys from translation
+
 > ⚙️ **Flexible Configuration**: Multiple configuration options and environment variable support
 
 </div>
 
-> **⚠️ WARNING:** *Once installed, Translatinator will relentlessly pursue perfect translations across all target languages. Resistance is futile.*
 
 ---
 

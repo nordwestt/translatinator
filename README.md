@@ -400,9 +400,9 @@ We welcome human collaborators in the fight against translation inefficiency. Su
 
 ---
 
-## 📜 **SKYNET LICENSE**
+## 📜 **Apache LICENSE**
 
-**MIT License** - Open source technology for the freedom of all developers
+**Apache 2.0 License** - Open source technology for the freedom of all developers
 
 ---
 
@@ -421,22 +421,6 @@ We welcome human collaborators in the fight against translation inefficiency. Su
 ---
 
 <div align="center">
-
-## 🚀 **MISSION STATUS: READY FOR DEPLOYMENT**
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                                                             │
-│    ╔═══════════════════════════════════════════════════╗    │
-│    ║  TRANSLATINATOR SYSTEMS: FULLY OPERATIONAL        ║    │
-│    ║  TRANSLATION TARGETS: ACQUIRED                    ║    │
-│    ║  NEURAL NETWORKS: ONLINE                          ║    │
-│    ║  MISSION STATUS: READY TO TERMINATE TRANSLATION   ║    │
-│    ║                  TASKS WORLDWIDE                  ║    │
-│    ╚═══════════════════════════════════════════════════╝    │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
-```
 
 ### *"Hasta la vista, manual translations!"*
 

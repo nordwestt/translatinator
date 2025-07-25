@@ -28,7 +28,7 @@
 ```
 ┌─ NEURAL NETWORK FEATURES ────────────────────────────────────┐
 │                                                              │
-│  🧠  MULTI-ENGINE INTELLIGENCE  │  Harness Google, DeepL,    │
+│  🧠  MULTIPLE ENGINES           │  Harness Google, DeepL,    │
 │      ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━│  Yandex & LibreTranslate  │
 │                                                              │
 │  💾  QUANTUM MEMORY CACHE       │  Smart caching prevents    │
@@ -43,11 +43,15 @@
 │  🎯  PRECISION TARGETING        │  Exclude specific keys     │
 │      ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━│  from translation         │
 │                                                              │
-│  📊  MISSION ANALYTICS          │  Track API usage &         │
-│      ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━│  cache statistics         │
-│                                                              │
 └──────────────────────────────────────────────────────────────┘
+
 ```
+- 🚀 **Multiple Translation Engines**: Support for Google Translate (default), DeepL, Yandex, and LibreTranslate
+- 💾 **Smart Caching**: Avoid retranslating unchanged content with built-in cache management
+- 🔄 **File Watching**: Auto-translate when source files change
+- 🔧 **Build Integration**: Webpack plugin for seamless build process integration
+- 🎯 **Selective Translation**: Exclude specific keys from translation
+- ⚙️ **Flexible Configuration**: Multiple configuration options and environment variable support
 
 </div>
 
@@ -65,7 +69,7 @@ npm install translatinator
 
 ---
 
-### 🔥 **1. Initialize Configuration**
+### **1. Initialize Configuration**
 
 ```bash
 npx translatinator init
@@ -225,7 +229,6 @@ npx translatinator init [-o, --output <path>]
 
 ### **Intel & Diagnostics**
 ```bash
-npx translatinator usage [-c, --config <path>]    # ← Mission statistics
 npx translatinator clear-cache [-c, --config <path>] # ← Memory wipe
 ```
 
@@ -280,9 +283,6 @@ const translatinator = new Translatinator(deeplMission);
 await translatinator.initialize();
 await translatinator.translateAll();
 
-// 📊 TACTICAL INTELLIGENCE (Engine-dependent)
-const intel = await translatinator.getUsageInfo();
-console.log('Mission Status:', intel);
 ```
 
 ---
@@ -367,11 +367,6 @@ export DEEPL_API_KEY="your-deepl-access-code"
 🇪🇸 es - Spanish      🇮🇹 it - Italian      🇳🇱 nl - Dutch  
 🇵🇱 pl - Polish       🇵🇹 pt - Portuguese   🇷🇺 ru - Russian
 🇯🇵 ja - Japanese     🇨🇳 zh - Chinese      + many more...
-```
-
-*For complete language arsenal data, consult translation engine documentation or run:*
-```bash
-npx translatinator usage
 ```
 
 ---

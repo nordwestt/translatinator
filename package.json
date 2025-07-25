@@ -1,7 +1,7 @@
 {
   "name": "translatinator",
   "version": "1.0.0",
-  "description": "Automated translation management for web applications using multiple translation engines (Google, DeepL, Yandex, LibreTranslate)",
+  "description": "Automated translation management for web applications. Supports multiple translation engines (Google, DeepL, Yandex, LibreTranslate)",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "type": "module",
@@ -30,7 +30,7 @@
     "webpack",
     "automation"
   ],
-  "author": "Your Name",
+  "author": "nordwestt",
   "license": "MIT",
   "dependencies": {
     "axios": "^1.6.0",

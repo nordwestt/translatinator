@@ -1,8 +1,5 @@
 <div align="center">
 
-# 🤖 TRANSLATINATOR
-### *"Your troubles? Terminated. Your translations? Generated."*
-
 ```
 ████████╗██████╗  █████╗ ███╗   ██╗███████╗██╗      █████╗ ████████╗██╗███╗   ██╗ █████╗ ████████╗ ██████╗ ██████╗ 
 ╚══██╔══╝██╔══██╗██╔══██╗████╗  ██║██╔════╝██║     ██╔══██╗╚══██╔══╝██║████╗  ██║██╔══██╗╚══██╔══╝██╔═══██╗██╔══██╗
@@ -12,6 +9,7 @@
    ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝╚══════╝╚══════╝╚═╝  ╚═╝   ╚═╝   ╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝   ╚═╝    ╚═════╝ ╚═╝  ╚═╝
                                                                                                        
 ```
+### *"Your troubles? Terminated. Your translations? Generated."*
 
 <p align="center">
   <img src="https://img.shields.io/badge/Mission-TERMINATE%20TRANSLATION%20TASKS-red?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDJMMTMuMDkgOC4yNkwyMCA5TDEzLjA5IDE1Ljc0TDEyIDIyTDEwLjkxIDE1Ljc0TDQgOUwxMC45MSA4LjI2TDEyIDJaIiBmaWxsPSJ3aGl0ZSIvPgo8L3N2Zz4K" />
@@ -21,11 +19,7 @@
 
 ---
 
-## 🎯 **MISSION BRIEFING**
-
-**TARGET ACQUIRED:** *Tedious translation tasks detected*  
-**THREAT LEVEL:** *Maximum productivity loss*  
-**SOLUTION:** *Advanced cybernetic translation automation*
+## 🎯 **PACKAGE BRIEFING**
 
 **Translatinator** is your unstoppable translation terminator. Powered by cutting-edge AI and multiple translation engines, this cybernetic package will hunt down and eliminate every untranslated string in your application. No manual translation will survive.
 

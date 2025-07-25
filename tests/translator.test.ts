@@ -15,9 +15,6 @@ jest.mock('translate', () => {
     return Promise.resolve(translations[text] || `Translated: ${text}`);
   });
   
-  mockTranslate.engine = 'google';
-  mockTranslate.key = undefined;
-  
   return mockTranslate;
 });
 

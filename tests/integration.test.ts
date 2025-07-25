@@ -277,7 +277,7 @@ describe('Integration Tests', () => {
       };
       await fs.writeJson(configPath, config);
 
-      await expect(translate(configPath)).rejects.toThrow('DeepL API key is required');
+      await expect(translate(configPath)).rejects.toThrow('API key is required');
     });
 
     it('should handle missing target languages', async () => {

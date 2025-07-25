@@ -2,7 +2,7 @@
 import { defineConfig } from 'tsup';
 
 export default defineConfig({
-  entry: ['src/index.ts', 'src/cli.ts'], // Include both entry points
+  entry: ['src/index.ts', 'src/cli.ts', 'src/dev.ts'], // Include all entry points
   outDir: 'dist',
   format: ['esm', 'cjs'],          // Build both ESM and CommonJS
   dts: true,                       // Emit .d.ts files

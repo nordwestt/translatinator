@@ -6,7 +6,8 @@
   "types": "dist/index.d.ts",
   "type": "module",
   "bin": {
-    "translatinator": "dist/cli.js"
+    "translatinator": "dist/cli.js",
+    "translatinator-dev": "dist/dev.js"
   },
   "scripts": {
     "build": "tsup",

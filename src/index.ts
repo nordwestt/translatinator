@@ -65,6 +65,7 @@ export class TranslatinatorNextPlugin {
   private config: any;
   private translatinator?: any;
   private watcher?: any;
+  private isInitialized = false;
 
   constructor(options: any = {}) {
     this.config = options;
@@ -75,8 +76,12 @@ export class TranslatinatorNextPlugin {
       ...nextConfig,
       webpack: (webpackConfig: any, { dev, isServer }: { dev: boolean; isServer: boolean }) => {
         // Only run on the server-side in development mode
-        if (dev && isServer) {
-          this.setupDevModeTranslation();
+        if (dev && isServer && !this.isInitialized) {
+          // Use setImmediate to avoid blocking the webpack compilation
+          setImmediate(() => {
+            this.setupDevModeTranslation();
+          });
+          this.isInitialized = true;
         }
 
         // Call the original webpack function if it exists
@@ -85,6 +90,17 @@ export class TranslatinatorNextPlugin {
         }
 
         return webpackConfig;
+      },
+      // Add experimental support for Turbopack
+      experimental: {
+        ...nextConfig.experimental,
+        turbo: {
+          ...nextConfig.experimental?.turbo,
+          // Ensure our plugin works with Turbopack
+          rules: {
+            ...nextConfig.experimental?.turbo?.rules,
+          },
+        },
       },
     };
   }
@@ -176,5 +192,153 @@ export function withTranslatinator(options: any = {}) {
   
   return (nextConfig: any = {}) => {
     return plugin.apply(nextConfig);
+  };
+}
+
+// Standalone development watcher for Turbopack and other scenarios
+export class TranslatinatorDevServer {
+  private config: any;
+  private translatinator?: any;
+  private watcher?: any;
+  private isRunning = false;
+
+  constructor(options: any = {}) {
+    this.config = options;
+  }
+
+  async start(): Promise<void> {
+    if (this.isRunning) {
+      console.log('[Translatinator Dev] Already running...');
+      return;
+    }
+
+    try {
+      const { Translatinator } = await import('./translatinator');
+      const { ConfigLoader } = await import('./config');
+
+      const config = await ConfigLoader.loadConfig(this.config.configPath);
+      
+      // Check for API key
+      const hasApiKey = config.apiKey || config.deeplApiKey;
+      if (!hasApiKey || hasApiKey === 'your-api-key-here' || hasApiKey === 'your-deepl-api-key-here') {
+        console.warn('[Translatinator Dev] No API key found, translation watcher not started');
+        return;
+      }
+
+      // Handle backwards compatibility for deeplApiKey
+      if (config.deeplApiKey && !config.apiKey) {
+        config.apiKey = config.deeplApiKey;
+        if (!config.engine) {
+          config.engine = 'deepl';
+        }
+      }
+
+      if (!config.targetLanguages || config.targetLanguages.length === 0) {
+        console.warn('[Translatinator Dev] No target languages specified, translation watcher not started');
+        return;
+      }
+
+      // Initialize translatinator
+      this.translatinator = new Translatinator(config);
+      await this.translatinator.initialize();
+
+      // Run initial translation
+      console.log('[Translatinator Dev] Running initial translation...');
+      await this.translatinator.translateAll();
+
+      // Set up file watching
+      await this.setupFileWatcher(config);
+
+      this.isRunning = true;
+      console.log('[Translatinator Dev] Translation watcher started successfully! 🚀');
+      console.log('[Translatinator Dev] Watching for changes in:', config.sourceFile);
+    } catch (error) {
+      console.error('[Translatinator Dev] Failed to start translation watcher:', error);
+    }
+  }
+
+  async stop(): Promise<void> {
+    if (this.watcher) {
+      await this.watcher.close();
+      this.watcher = undefined;
+    }
+    this.isRunning = false;
+    console.log('[Translatinator Dev] Translation watcher stopped');
+  }
+
+  private async setupFileWatcher(config: any): Promise<void> {
+    const chokidar = await import('chokidar');
+    const path = await import('path');
+
+    const sourceFilePath = path.join(config.localesDir, config.sourceFile);
+    
+    this.watcher = chokidar.watch(sourceFilePath, {
+      persistent: true,
+      ignoreInitial: true
+    });
+
+    this.watcher.on('change', async () => {
+      console.log('[Translatinator Dev] 📝 Source file changed, updating translations...');
+      try {
+        if (this.translatinator) {
+          await this.translatinator.translateAll();
+          console.log('[Translatinator Dev] ✅ Translations updated successfully');
+        }
+      } catch (error) {
+        console.error('[Translatinator Dev] ❌ Auto-translation failed:', error);
+      }
+    });
+
+    // Cleanup on process exit
+    const cleanup = async () => {
+      await this.stop();
+    };
+
+    process.on('SIGINT', cleanup);
+    process.on('SIGTERM', cleanup);
+    process.on('beforeExit', cleanup);
+  }
+}
+
+// Enhanced Next.js integration that works with both Webpack and Turbopack
+export function withTranslatinatorDev(options: any = {}) {
+  let devServer: TranslatinatorDevServer | null = null;
+  
+  return (nextConfig: any = {}) => {
+    const config = {
+      ...nextConfig,
+      webpack: (webpackConfig: any, { dev, isServer }: { dev: boolean; isServer: boolean }) => {
+        // Only run on the server-side in development mode
+        if (dev && isServer && !devServer) {
+          devServer = new TranslatinatorDevServer(options);
+          // Start the dev server asynchronously to not block webpack
+          setImmediate(() => {
+            devServer?.start();
+          });
+        }
+
+        // Call the original webpack function if it exists
+        if (typeof nextConfig.webpack === 'function') {
+          return nextConfig.webpack(webpackConfig, { dev, isServer });
+        }
+
+        return webpackConfig;
+      },
+    };
+
+    // Handle process cleanup
+    if (typeof process !== 'undefined') {
+      const cleanup = async () => {
+        if (devServer) {
+          await devServer.stop();
+        }
+      };
+
+      process.on('SIGINT', cleanup);
+      process.on('SIGTERM', cleanup);
+      process.on('beforeExit', cleanup);
+    }
+
+    return config;
   };
 }

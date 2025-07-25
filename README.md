@@ -1,18 +1,19 @@
 # Translatinator
 
-🌍 **Automated translation management for web applications using DeepL API**
+🌍 **Automated translation management for web applications using multiple translation engines**
 
-Translatinator is an npm package that streamlines the translation workflow for web applications. It automatically translates your source language file to multiple target languages using the DeepL API, with intelligent caching and build process integration.
+Translatinator is an npm package that streamlines the translation workflow for web applications. It automatically translates your source language file to multiple target languages using various translation engines including Google Translate, DeepL, Yandex, and LibreTranslate, with intelligent caching and build process integration.
 
 ## Features
 
-- 🚀 **Automated Translation**: Translate from a source language file to multiple target languages
+- 🚀 **Multiple Translation Engines**: Support for Google Translate (default), DeepL, Yandex, and LibreTranslate
 - 💾 **Smart Caching**: Avoid retranslating unchanged content with built-in cache management
 - 🔄 **File Watching**: Auto-translate when source files change
 - 🔧 **Build Integration**: Webpack plugin for seamless build process integration
 - 🎯 **Selective Translation**: Exclude specific keys from translation
-- 📊 **Usage Tracking**: Monitor DeepL API usage and cache statistics
+- 📊 **Usage Tracking**: Monitor API usage and cache statistics
 - ⚙️ **Flexible Configuration**: Multiple configuration options and environment variable support
+- 🔗 **Easy Migration**: Backwards compatible with existing DeepL configurations
 
 ## Installation
 
@@ -32,11 +33,11 @@ This creates a `translatinator.config.json` file:
 
 ```json
 {
-  "deeplApiKey": "your-deepl-api-key-here",
+  "engine": "google",
+  "apiKey": "your-api-key-here",
   "sourceFile": "en.json",
   "targetLanguages": ["de", "fr", "es", "it", "nl", "pl"],
   "localesDir": "./locales",
-  "deeplFree": true,
   "watch": false,
   "force": false,
   "filePattern": "{lang}.json",
@@ -84,11 +85,12 @@ This will generate translated files like `de.json`, `fr.json`, etc. in your loca
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `deeplApiKey` | string | **required** | Your DeepL API key |
+| `engine` | string | `"google"` | Translation engine: 'google', 'deepl', 'yandex', or 'libre' |
+| `apiKey` | string | **required** | API key for the chosen translation engine |
+| `endpointUrl` | string | `undefined` | Custom endpoint URL (for LibreTranslate or self-hosted services) |
 | `sourceFile` | string | `"en.json"` | Source language file name |
 | `targetLanguages` | string[] | `[]` | Array of target language codes |
 | `localesDir` | string | `"./locales"` | Directory containing translation files |
-| `deeplFree` | boolean | `true` | Use DeepL free API (vs pro) |
 | `watch` | boolean | `false` | Watch source file for changes |
 | `force` | boolean | `false` | Force retranslation of all entries |
 | `filePattern` | string | `"{lang}.json"` | Output file naming pattern |
@@ -96,6 +98,13 @@ This will generate translated files like `de.json`, `fr.json`, etc. in your loca
 | `excludeKeys` | string[] | `[]` | Keys to exclude from translation |
 | `cacheDir` | string | `".translatinator-cache"` | Cache directory path |
 | `verbose` | boolean | `false` | Enable detailed logging |
+
+### Legacy Configuration (Backwards Compatible)
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `deeplApiKey` | string | **deprecated** | Use `apiKey` instead (automatically sets engine to 'deepl') |
+| `deeplFree` | boolean | **deprecated** | No longer needed |
 
 ## CLI Usage
 
@@ -115,6 +124,53 @@ Options:
 npx translatinator init [-o, --output <path>]
 ```
 
+## Translation Engines
+
+Translatinator supports multiple translation engines:
+
+### Google Translate (Default)
+```json
+{
+  "engine": "google"
+}
+```
+- No API key required for basic usage
+- Supports most languages
+- Rate limited for free usage
+
+### DeepL
+```json
+{
+  "engine": "deepl",
+  "apiKey": "your-deepl-api-key"
+}
+```
+- Requires DeepL API key
+- High quality translations
+- Supports fewer languages but better accuracy
+
+### Yandex Translate
+```json
+{
+  "engine": "yandex",
+  "apiKey": "your-yandex-api-key"
+}
+```
+- Requires Yandex API key
+- Good for Russian and Eastern European languages
+
+### LibreTranslate
+```json
+{
+  "engine": "libre",
+  "endpointUrl": "https://your-libretranslate-instance.com",
+  "apiKey": "your-api-key-if-required"
+}
+```
+- Open source translation engine
+- Can be self-hosted
+- Privacy-focused option
+
 ### Check API usage
 ```bash
 npx translatinator usage [-c, --config <path>]
@@ -130,22 +186,42 @@ npx translatinator clear-cache [-c, --config <path>]
 ```javascript
 import { Translatinator, translate } from 'translatinator';
 
-// Simple usage
+// Simple usage with Google Translate (default)
 await translate('./my-config.json');
 
-// Advanced usage
-const config = {
-  deeplApiKey: 'your-api-key',
+// DeepL configuration
+const deeplConfig = {
+  engine: 'deepl',
+  apiKey: 'your-deepl-api-key',
   sourceFile: 'en.json',
   targetLanguages: ['de', 'fr', 'es'],
   localesDir: './i18n'
 };
 
-const translatinator = new Translatinator(config);
+// Yandex configuration
+const yandexConfig = {
+  engine: 'yandex',
+  apiKey: 'your-yandex-api-key',
+  sourceFile: 'en.json',
+  targetLanguages: ['ru', 'uk', 'be'],
+  localesDir: './i18n'
+};
+
+// LibreTranslate configuration
+const libreConfig = {
+  engine: 'libre',
+  endpointUrl: 'https://your-instance.com',
+  apiKey: 'optional-api-key',
+  sourceFile: 'en.json',
+  targetLanguages: ['de', 'fr', 'es'],
+  localesDir: './i18n'
+};
+
+const translatinator = new Translatinator(deeplConfig);
 await translatinator.initialize();
 await translatinator.translateAll();
 
-// Get usage info
+// Get usage info (limited support depending on engine)
 const usage = await translatinator.getUsageInfo();
 console.log(usage);
 ```
@@ -176,9 +252,15 @@ module.exports = {
 You can also configure Translatinator using environment variables:
 
 ```bash
-export DEEPL_API_KEY="your-deepl-api-key"
+# New environment variables
+export TRANSLATION_ENGINE="deepl"
+export TRANSLATION_API_KEY="your-api-key"
+export TRANSLATION_ENDPOINT_URL="https://your-libretranslate-instance.com"
 export TRANSLATINATOR_SOURCE_FILE="en.json"
 export TRANSLATINATOR_TARGET_LANGUAGES="de,fr,es,it"
+
+# Legacy environment variables (still supported)
+export DEEPL_API_KEY="your-deepl-api-key"  # Automatically sets engine to 'deepl'
 ```
 
 ## Caching

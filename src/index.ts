@@ -8,8 +8,18 @@ export * from './types';
 export async function translate(configPath?: string): Promise<void> {
   const config = await ConfigLoader.loadConfig(configPath);
   
-  if (!config.deeplApiKey || config.deeplApiKey === 'your-deepl-api-key-here') {
-    throw new Error('DeepL API key is required. Set it in config file or DEEPL_API_KEY environment variable.');
+  // Check for API key with backwards compatibility
+  const hasApiKey = config.apiKey || config.deeplApiKey;
+  if (!hasApiKey || hasApiKey === 'your-api-key-here' || hasApiKey === 'your-deepl-api-key-here') {
+    throw new Error('API key is required. Set it in config file or TRANSLATION_API_KEY/DEEPL_API_KEY environment variable.');
+  }
+
+  // Handle backwards compatibility for deeplApiKey
+  if (config.deeplApiKey && !config.apiKey) {
+    config.apiKey = config.deeplApiKey;
+    if (!config.engine) {
+      config.engine = 'deepl';
+    }
   }
 
   if (!config.targetLanguages || config.targetLanguages.length === 0) {

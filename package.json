@@ -1,7 +1,7 @@
 {
   "name": "translatinator",
   "version": "1.0.0",
-  "description": "Automated translation management for web applications using DeepL API",
+  "description": "Automated translation management for web applications using multiple translation engines (Google, DeepL, Yandex, LibreTranslate)",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
@@ -21,7 +21,10 @@
     "translation",
     "i18n",
     "internationalization",
+    "google-translate",
     "deepl",
+    "yandex",
+    "libretranslate", 
     "webpack",
     "automation"
   ],

@@ -1,20 +1,44 @@
-import * as deepl from 'deepl-node';
 import translate from "translate";
 import { TranslatinatorConfig, TranslationCache, TranslationEntry } from './types';
 import { CacheManager } from './cache';
 import { Logger } from './logger';
 
-export class DeepLTranslator {
-  private translator: deepl.Translator;
+export class TranslationService {
   private cache: CacheManager;
   private logger: Logger;
   private config: TranslatinatorConfig;
 
   constructor(config: TranslatinatorConfig, cache: CacheManager, logger: Logger) {
     this.config = config;
-    this.translator = new deepl.Translator(config.deeplApiKey);
     this.cache = cache;
     this.logger = logger;
+    this.setupTranslateEngine();
+  }
+
+  private setupTranslateEngine(): void {
+    // Set the translation engine
+    translate.engine = this.config.engine || 'google';
+    
+    // Set API key if provided
+    if (this.config.apiKey) {
+      translate.key = this.config.apiKey;
+    } else if (this.config.deeplApiKey && this.config.engine === 'deepl') {
+      // Support legacy deeplApiKey
+      translate.key = this.config.deeplApiKey;
+    }
+    
+    // Set custom endpoint URL if provided (for LibreTranslate, etc.)
+    if (this.config.endpointUrl) {
+      // Note: url setting might not be available in all versions of the translate package
+      // This is for LibreTranslate or custom endpoints
+      try {
+        (translate as any).url = this.config.endpointUrl;
+      } catch (error) {
+        this.logger.warn('Custom endpoint URL setting is not supported by this version of the translate package');
+      }
+    }
+
+    this.logger.debug(`Translation engine set to: ${translate.engine}`);
   }
 
   async translateText(text: string, targetLang: string, sourceLang: string = 'en'): Promise<string> {
@@ -28,13 +52,10 @@ export class DeepLTranslator {
     try {
       this.logger.debug(`Translating "${text}" from ${sourceLang} to ${targetLang}`);
       
-      const result = await this.translator.translateText(
-        text,
-        sourceLang as deepl.SourceLanguageCode,
-        targetLang as deepl.TargetLanguageCode
-      );
-
-      const translatedText = result.text;
+      const translatedText = await translate(text, {
+        from: sourceLang,
+        to: targetLang
+      });
       
       // Cache the translation
       this.cache.setCachedTranslation(text, targetLang, {
@@ -86,9 +107,19 @@ export class DeepLTranslator {
     return this.config.excludeKeys.includes(key);
   }
 
-  async getUsage(): Promise<deepl.Usage> {
+  async getUsage(): Promise<any> {
     try {
-      return await this.translator.getUsage();
+      // The translate package doesn't provide usage information
+      // This is a limitation when moving away from DeepL
+      // We'll return a mock response or throw an error
+      this.logger.warn('Usage information is not available with the current translation engine');
+      return {
+        character: { 
+          count: 0, 
+          limit: 'unlimited' 
+        },
+        engine: translate.engine
+      };
     } catch (error) {
       this.logger.error('Failed to get API usage:', error);
       throw error;

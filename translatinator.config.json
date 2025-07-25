@@ -1,9 +1,9 @@
 {
-  "deeplApiKey": "your-deepl-api-key-here",
+  "engine": "google",
+  "apiKey": "your-api-key-here",
   "sourceFile": "en.json",
   "targetLanguages": ["de", "fr", "es", "it", "nl", "pl"],
   "localesDir": "./locales",
-  "deeplFree": true,
   "watch": false,
   "force": false,
   "filePattern": "{lang}.json",

@@ -5,9 +5,9 @@ import { TranslatinatorConfig } from './types';
 export class ConfigLoader {
   static async loadConfig(configPath?: string): Promise<TranslatinatorConfig> {
     const defaultConfig: Partial<TranslatinatorConfig> = {
+      engine: 'google',
       sourceFile: 'en.json',
       localesDir: './locales',
-      deeplFree: true,
       watch: false,
       force: false,
       filePattern: '{lang}.json',
@@ -21,8 +21,20 @@ export class ConfigLoader {
     // Load environment variables first (lowest priority)
     const envConfig: Partial<TranslatinatorConfig> = {};
     
-    if (process.env.DEEPL_API_KEY) {
-      envConfig.deeplApiKey = process.env.DEEPL_API_KEY;
+    // Support both new and legacy environment variables
+    if (process.env.TRANSLATION_API_KEY) {
+      envConfig.apiKey = process.env.TRANSLATION_API_KEY;
+    } else if (process.env.DEEPL_API_KEY) {
+      envConfig.apiKey = process.env.DEEPL_API_KEY;
+      envConfig.engine = 'deepl'; // Auto-set engine if using legacy env var
+    }
+    
+    if (process.env.TRANSLATION_ENGINE) {
+      envConfig.engine = process.env.TRANSLATION_ENGINE as any;
+    }
+    
+    if (process.env.TRANSLATION_ENDPOINT_URL) {
+      envConfig.endpointUrl = process.env.TRANSLATION_ENDPOINT_URL;
     }
     
     if (process.env.TRANSLATINATOR_SOURCE_FILE) {
@@ -89,11 +101,11 @@ export class ConfigLoader {
 
   static async createSampleConfig(outputPath: string = 'translatinator.config.json'): Promise<void> {
     const sampleConfig: TranslatinatorConfig = {
-      deeplApiKey: 'your-deepl-api-key-here',
+      engine: 'google',
+      apiKey: 'your-api-key-here',
       sourceFile: 'en.json',
       targetLanguages: ['de', 'fr', 'es', 'it', 'nl', 'pl'],
       localesDir: './locales',
-      deeplFree: true,
       watch: false,
       force: false,
       filePattern: '{lang}.json',

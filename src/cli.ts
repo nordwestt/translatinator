@@ -55,8 +55,10 @@ program
     try {
       const config = await ConfigLoader.loadConfig(options.config);
       
-      if (!config.deeplApiKey) {
-        throw new Error('DeepL API key is required');
+      // Check for API key with backwards compatibility
+      const hasApiKey = config.apiKey || config.deeplApiKey;
+      if (!hasApiKey) {
+        throw new Error('API key is required');
       }
 
       const { Translatinator } = require('./index');

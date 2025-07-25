@@ -1,6 +1,14 @@
+export type TranslationEngine = 'google' | 'yandex' | 'libre' | 'deepl';
+
 export interface TranslatinatorConfig {
-  /** DeepL API key */
-  deeplApiKey: string;
+  /** Translation engine to use (default: 'google') */
+  engine?: TranslationEngine;
+  
+  /** API key for the translation engine */
+  apiKey?: string;
+  
+  /** Custom endpoint URL (for engines like LibreTranslate) */
+  endpointUrl?: string;
   
   /** Source language file (default: 'en.json') */
   sourceFile: string;
@@ -10,9 +18,6 @@ export interface TranslatinatorConfig {
   
   /** Directory containing translation files (default: './locales') */
   localesDir: string;
-  
-  /** Whether to use DeepL free or pro API (default: true for free) */
-  deeplFree?: boolean;
   
   /** Enable file watching for automatic translation (default: false) */
   watch?: boolean;
@@ -34,6 +39,12 @@ export interface TranslatinatorConfig {
   
   /** Enable verbose logging (default: false) */
   verbose?: boolean;
+  
+  /** @deprecated Use apiKey instead */
+  deeplApiKey?: string;
+  
+  /** @deprecated Use engine setting instead */
+  deeplFree?: boolean;
 }
 
 export interface TranslationEntry {

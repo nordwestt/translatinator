@@ -2,20 +2,20 @@ import * as fs from 'fs-extra';
 import * as path from 'path';
 import * as chokidar from 'chokidar';
 import { TranslatinatorConfig } from './types';
-import { DeepLTranslator } from './translator';
+import { TranslationService } from './translator';
 import { CacheManager } from './cache';
 import { Logger } from './logger';
 
 export class Translatinator {
   private config: TranslatinatorConfig;
-  private translator: DeepLTranslator;
+  private translator: TranslationService;
   private cache: CacheManager;
   private logger: Logger;
   private watcher?: chokidar.FSWatcher;
 
   constructor(config: TranslatinatorConfig) {
     this.config = {
-      deeplFree: true,
+      engine: 'google',
       watch: false,
       force: false,
       filePattern: '{lang}.json',
@@ -27,7 +27,7 @@ export class Translatinator {
 
     this.logger = new Logger(this.config.verbose);
     this.cache = new CacheManager(this.config.cacheDir!, this.logger);
-    this.translator = new DeepLTranslator(this.config, this.cache, this.logger);
+    this.translator = new TranslationService(this.config, this.cache, this.logger);
   }
 
   async initialize(): Promise<void> {

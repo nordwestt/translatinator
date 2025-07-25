@@ -69,7 +69,7 @@ describe('CLI Commands', () => {
 
       // Since we're mocking, we need to manually create the file to test file creation
       const configContent = {
-        deeplApiKey: 'your-deepl-api-key-here',
+        apiKey: 'your-api-key-here',
         sourceFile: 'en.json',
         targetLanguages: ['de', 'fr', 'es', 'it', 'nl', 'pl']
       };
@@ -79,7 +79,7 @@ describe('CLI Commands', () => {
       expect(await fs.pathExists('translatinator.config.json')).toBe(true);
       
       const config = await fs.readJson('translatinator.config.json');
-      expect(config.deeplApiKey).toBe('your-deepl-api-key-here');
+      expect(config.apiKey).toBe('your-api-key-here');
       expect(config.targetLanguages).toContain('de');
     });
 
@@ -91,7 +91,7 @@ describe('CLI Commands', () => {
 
       const customPath = 'custom-config.json';
       const configContent = {
-        deeplApiKey: 'your-deepl-api-key-here',
+        apiKey: 'your-api-key-here',
         sourceFile: 'en.json'
       };
       
@@ -106,7 +106,7 @@ describe('CLI Commands', () => {
       const { translate, ConfigLoader } = require('../src/index');
       
       const mockConfig = {
-        deeplApiKey: 'test-key',
+        apiKey: 'test-key',
         targetLanguages: ['de', 'fr'],
         sourceFile: 'en.json',
         localesDir: './locales'
@@ -141,7 +141,7 @@ describe('CLI Commands', () => {
       const { translate, ConfigLoader } = require('../src/index');
       
       const mockConfig = {
-        deeplApiKey: 'test-key',
+        apiKey: 'test-key',
         targetLanguages: ['de'],
         sourceFile: 'en.json'
       };
@@ -160,7 +160,7 @@ describe('CLI Commands', () => {
       const { Translatinator, ConfigLoader } = require('../src/index');
       
       const mockConfig = {
-        deeplApiKey: 'test-key',
+        apiKey: 'test-key',
         targetLanguages: ['de', 'fr'],
         sourceFile: 'en.json'
       };
@@ -182,7 +182,7 @@ describe('CLI Commands', () => {
       const { Translatinator, ConfigLoader } = require('../src/index');
       
       const mockConfig = {
-        deeplApiKey: 'test-key',
+        apiKey: 'test-key',
         targetLanguages: ['de'],
         sourceFile: 'en.json'
       };

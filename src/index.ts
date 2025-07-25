@@ -7,19 +7,11 @@ export * from './types';
 // Main programmatic API
 export async function translate(configPath?: string): Promise<void> {
   const config = await ConfigLoader.loadConfig(configPath);
-  
-  // Check for API key with backwards compatibility
-  const hasApiKey = config.apiKey || config.deeplApiKey;
-  if (!hasApiKey || hasApiKey === 'your-api-key-here' || hasApiKey === 'your-deepl-api-key-here') {
-    throw new Error('API key is required. Set it in config file or TRANSLATION_API_KEY/DEEPL_API_KEY environment variable.');
-  }
 
-  // Handle backwards compatibility for deeplApiKey
-  if (config.deeplApiKey && !config.apiKey) {
-    config.apiKey = config.deeplApiKey;
-    if (!config.engine) {
-      config.engine = 'deepl';
-    }
+  // Check for API key
+  const hasApiKey = config.apiKey;
+  if (!hasApiKey || hasApiKey === 'your-api-key-here') {
+    throw new Error('API key is required. Set it in config file or TRANSLATION_API_KEY environment variable.');
   }
 
   if (!config.targetLanguages || config.targetLanguages.length === 0) {
@@ -113,18 +105,10 @@ export class TranslatinatorNextPlugin {
       const config = await ConfigLoader.loadConfig(this.config.configPath);
       
       // Check for API key
-      const hasApiKey = config.apiKey || config.deeplApiKey;
-      if (!hasApiKey || hasApiKey === 'your-api-key-here' || hasApiKey === 'your-deepl-api-key-here') {
+      const hasApiKey = config.apiKey;
+      if (!hasApiKey || hasApiKey === 'your-api-key-here') {
         console.warn('[Translatinator] No API key found, skipping translation setup');
         return;
-      }
-
-      // Handle backwards compatibility for deeplApiKey
-      if (config.deeplApiKey && !config.apiKey) {
-        config.apiKey = config.deeplApiKey;
-        if (!config.engine) {
-          config.engine = 'deepl';
-        }
       }
 
       if (!config.targetLanguages || config.targetLanguages.length === 0) {
@@ -219,18 +203,10 @@ export class TranslatinatorDevServer {
       const config = await ConfigLoader.loadConfig(this.config.configPath);
       
       // Check for API key
-      const hasApiKey = config.apiKey || config.deeplApiKey;
-      if (!hasApiKey || hasApiKey === 'your-api-key-here' || hasApiKey === 'your-deepl-api-key-here') {
+      const hasApiKey = config.apiKey;
+      if (!hasApiKey || hasApiKey === 'your-api-key-here') {
         console.warn('[Translatinator Dev] No API key found, translation watcher not started');
         return;
-      }
-
-      // Handle backwards compatibility for deeplApiKey
-      if (config.deeplApiKey && !config.apiKey) {
-        config.apiKey = config.deeplApiKey;
-        if (!config.engine) {
-          config.engine = 'deepl';
-        }
       }
 
       if (!config.targetLanguages || config.targetLanguages.length === 0) {

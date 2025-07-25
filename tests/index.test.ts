@@ -148,7 +148,7 @@ describe('Index API', () => {
       const plugin = new TranslatinatorWebpackPlugin({ configPath: './config.json' });
       
       const mockConfig = {
-        deeplApiKey: 'test-key',
+        apiKey: 'test-key',
         targetLanguages: ['de', 'fr'],
         sourceFile: 'en.json',
         localesDir: './locales'

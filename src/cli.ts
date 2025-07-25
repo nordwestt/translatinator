@@ -54,9 +54,9 @@ program
   .action(async (options) => {
     try {
       const config = await ConfigLoader.loadConfig(options.config);
-      
-      // Check for API key with backwards compatibility
-      const hasApiKey = config.apiKey || config.deeplApiKey;
+
+      // Check for API key
+      const hasApiKey = config.apiKey;
       if (!hasApiKey) {
         throw new Error('API key is required');
       }

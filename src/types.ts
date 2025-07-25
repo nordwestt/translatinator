@@ -39,12 +39,6 @@ export interface TranslatinatorConfig {
   
   /** Enable verbose logging (default: false) */
   verbose?: boolean;
-  
-  /** @deprecated Use apiKey instead */
-  deeplApiKey?: string;
-  
-  /** @deprecated Use engine setting instead */
-  deeplFree?: boolean;
 }
 
 export interface TranslationEntry {

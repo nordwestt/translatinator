@@ -22,10 +22,7 @@ export class TranslationService {
     // Set API key if provided
     if (this.config.apiKey) {
       translate.key = this.config.apiKey;
-    } else if (this.config.deeplApiKey && this.config.engine === 'deepl') {
-      // Support legacy deeplApiKey
-      translate.key = this.config.deeplApiKey;
-    }
+    } 
     
     // Set custom endpoint URL if provided (for LibreTranslate, etc.)
     if (this.config.endpointUrl) {

@@ -31,7 +31,7 @@ export class TestUtils {
 
   static async createMockConfig(dir: string, overrides: any = {}): Promise<string> {
     const config = {
-      deeplApiKey: 'test-api-key',
+      apiKey: 'test-api-key',
       sourceFile: 'en.json',
       targetLanguages: ['de', 'fr'],
       localesDir: dir,

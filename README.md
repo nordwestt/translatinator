@@ -13,7 +13,6 @@ Translatinator is an npm package that streamlines the translation workflow for w
 - 🎯 **Selective Translation**: Exclude specific keys from translation
 - 📊 **Usage Tracking**: Monitor API usage and cache statistics
 - ⚙️ **Flexible Configuration**: Multiple configuration options and environment variable support
-- 🔗 **Easy Migration**: Backwards compatible with existing DeepL configurations
 
 ## Installation
 
@@ -98,13 +97,6 @@ This will generate translated files like `de.json`, `fr.json`, etc. in your loca
 | `excludeKeys` | string[] | `[]` | Keys to exclude from translation |
 | `cacheDir` | string | `".translatinator-cache"` | Cache directory path |
 | `verbose` | boolean | `false` | Enable detailed logging |
-
-### Legacy Configuration (Backwards Compatible)
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `deeplApiKey` | string | **deprecated** | Use `apiKey` instead (automatically sets engine to 'deepl') |
-| `deeplFree` | boolean | **deprecated** | No longer needed |
 
 ## CLI Usage
 

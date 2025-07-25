@@ -95,7 +95,7 @@ You can also configure via environment variables:
 ```bash
 # API Key (use one of these)
 TRANSLATION_API_KEY=your-api-key-here
-DEEPL_API_KEY=your-deepl-api-key-here  # legacy support
+DEEPL_API_KEY=your-api-key-here  # legacy support
 
 # Engine
 TRANSLATION_ENGINE=google

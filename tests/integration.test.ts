@@ -259,7 +259,7 @@ describe('Integration Tests', () => {
   describe('Error Handling', () => {
     it('should handle missing source file gracefully', async () => {
       const config = {
-        deeplApiKey: 'test-api-key',
+        apiKey: 'test-api-key',
         sourceFile: 'nonexistent.json',
         targetLanguages: ['de'],
         localesDir: localesDir
@@ -282,7 +282,7 @@ describe('Integration Tests', () => {
 
     it('should handle missing target languages', async () => {
       const config = {
-        deeplApiKey: 'test-key',
+        apiKey: 'test-key',
         sourceFile: 'en.json',
         targetLanguages: [],
         localesDir: localesDir
@@ -301,7 +301,7 @@ describe('Integration Tests', () => {
 
       // 2. Create configuration with custom pattern
       const config = {
-        deeplApiKey: 'test-api-key',
+        apiKey: 'test-api-key',
         sourceFile: 'en.json',
         targetLanguages: ['de', 'fr'],
         localesDir: localesDir,

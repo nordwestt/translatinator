@@ -57,5 +57,13 @@
   ],
   "engines": {
     "node": ">=14.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nordwestt/translatinator.git"
+  },
+  "homepage": "https://github.com/nordwestt/translatinator",
+  "publishConfig": {
+    "access": "public"
   }
 }

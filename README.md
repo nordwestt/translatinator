@@ -251,7 +251,7 @@ export TRANSLATION_ENDPOINT_URL="https://your-libretranslate-instance.com"
 export TRANSLATINATOR_SOURCE_FILE="en.json"
 export TRANSLATINATOR_TARGET_LANGUAGES="de,fr,es,it"
 
-# Legacy environment variables (still supported)
+# Alternatively set deepl api key
 export DEEPL_API_KEY="your-deepl-api-key"  # Automatically sets engine to 'deepl'
 ```
 

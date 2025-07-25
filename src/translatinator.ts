@@ -76,16 +76,20 @@ export class Translatinator {
 
       // Load existing translations if not forcing
       let existingData = {};
-      if (!this.config.force && (await fs.pathExists(targetFilePath))) {
+      const fileExists = await fs.pathExists(targetFilePath);
+      if (!this.config.force && fileExists) {
         existingData = await fs.readJson(targetFilePath);
         this.logger.debug(`Loaded existing translations for ${targetLang}`);
       }
 
       // When not forcing, preserve existing translations and only add missing keys
       let finalData: any;
+      let translationsPerformed = false;
+
       if (this.config.force) {
         // Force mode: completely replace with new translations
         finalData = await this.translator.translateObject(sourceData, targetLang);
+        translationsPerformed = true;
       } else {
         // Non-force mode: preserve existing values, only translate missing keys
         finalData = { ...existingData };
@@ -94,13 +98,22 @@ export class Translatinator {
         if (Object.keys(keysToTranslate).length > 0) {
           const newTranslations = await this.translator.translateObject(keysToTranslate, targetLang);
           finalData = this.deepMerge(finalData, newTranslations);
+          translationsPerformed = true;
         }
       }
 
-      // Write the translated file
-      await fs.writeJson(targetFilePath, finalData, { spaces: 2 });
-      
-      this.logger.success(`✓ Created/updated ${targetFileName}`);
+      // Only write the file if translations were performed or file doesn't exist
+      if (translationsPerformed || !fileExists) {
+        await fs.writeJson(targetFilePath, finalData, { spaces: 2 });
+        
+        if (translationsPerformed) {
+          this.logger.success(`✓ Created/updated ${targetFileName}`);
+        } else {
+          this.logger.success(`✓ Created ${targetFileName}`);
+        }
+      } else {
+        this.logger.success(`✓ No translation required for ${targetFileName}`);
+      }
     } catch (error) {
       this.logger.error(`Failed to translate to ${targetLang}:`, error);
       throw error;

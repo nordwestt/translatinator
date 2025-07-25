@@ -1,10 +1,10 @@
 import fs from 'fs-extra';
 import * as path from 'path';
 import * as chokidar from 'chokidar';
-import { TranslatinatorConfig } from './types.js';
-import { TranslationService } from './translator.js';
-import { CacheManager } from './cache.js';
-import { Logger } from './logger.js';
+import { TranslatinatorConfig } from './types';
+import { TranslationService } from './translator';
+import { CacheManager } from './cache';
+import { Logger } from './logger';
 
 export class Translatinator {
   private config: TranslatinatorConfig;

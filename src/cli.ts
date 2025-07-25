@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { Command } from 'commander';
-import { translate, ConfigLoader } from './index.js';
+import { translate, ConfigLoader } from './index';
 
 const program = new Command();
 

@@ -1,5 +1,5 @@
 import { Translatinator, ConfigLoader, translate } from '../src/index';
-import * as fs from 'fs-extra';
+import fs from 'fs-extra';
 import * as path from 'path';
 
 // Mock external dependencies

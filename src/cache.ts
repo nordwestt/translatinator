@@ -1,7 +1,7 @@
-import * as fs from 'fs-extra';
+import fs from 'fs-extra';
 import * as path from 'path';
-import { TranslationCache, TranslationEntry } from './types';
-import { Logger } from './logger';
+import { TranslationCache, TranslationEntry } from './types.js';
+import { Logger } from './logger.js';
 
 export class CacheManager {
   private cacheDir: string;

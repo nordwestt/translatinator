@@ -1,7 +1,7 @@
 import translate from "translate";
-import { TranslatinatorConfig, TranslationCache, TranslationEntry } from './types';
-import { CacheManager } from './cache';
-import { Logger } from './logger';
+import { TranslatinatorConfig, TranslationCache, TranslationEntry } from './types.js';
+import { CacheManager } from './cache.js';
+import { Logger } from './logger.js';
 
 export class TranslationService {
   private cache: CacheManager;

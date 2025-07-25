@@ -1,5 +1,5 @@
 import { execSync } from 'child_process';
-import * as fs from 'fs-extra';
+import fs from 'fs-extra';
 import * as path from 'path';
 
 // Mock the entire index module to avoid actual API calls

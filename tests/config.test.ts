@@ -1,5 +1,5 @@
 import { ConfigLoader } from '../src/config';
-import * as fs from 'fs-extra';
+import fs from 'fs-extra';
 import * as path from 'path';
 
 describe('ConfigLoader', () => {

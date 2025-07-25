@@ -1,8 +1,8 @@
-import { Translatinator } from './translatinator';
-import { ConfigLoader } from './config';
+import { Translatinator } from './translatinator.js';
+import { ConfigLoader } from './config.js';
 
 export { Translatinator, ConfigLoader };
-export * from './types';
+export * from './types.js';
 
 // Main programmatic API
 export async function translate(configPath?: string): Promise<void> {

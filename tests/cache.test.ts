@@ -1,6 +1,6 @@
 import { CacheManager } from '../src/cache';
 import { Logger } from '../src/logger';
-import * as fs from 'fs-extra';
+import fs from 'fs-extra';
 import * as path from 'path';
 
 describe('CacheManager', () => {

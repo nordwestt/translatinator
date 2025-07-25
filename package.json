@@ -4,6 +4,7 @@
   "description": "Automated translation management for web applications using multiple translation engines (Google, DeepL, Yandex, LibreTranslate)",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "type": "module",
   "bin": {
     "translatinator": "dist/cli.js"
   },

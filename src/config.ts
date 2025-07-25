@@ -1,6 +1,6 @@
-import * as fs from 'fs-extra';
+import fs from 'fs-extra';
 import * as path from 'path';
-import { TranslatinatorConfig } from './types';
+import { TranslatinatorConfig } from './types.js';
 
 export class ConfigLoader {
   static async loadConfig(configPath?: string): Promise<TranslatinatorConfig> {

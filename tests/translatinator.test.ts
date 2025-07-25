@@ -1,6 +1,6 @@
 import { Translatinator } from '../src/translatinator';
 import { TranslatinatorConfig } from '../src/types';
-import * as fs from 'fs-extra';
+import fs from 'fs-extra';
 import * as path from 'path';
 
 // Mock the translator module

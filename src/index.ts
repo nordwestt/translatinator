@@ -8,7 +8,7 @@ export * from './types';
 export async function translate(configPath?: string): Promise<void> {
   const config = await ConfigLoader.loadConfig(configPath);
   
-  if (!config.deeplApiKey) {
+  if (!config.deeplApiKey || config.deeplApiKey === 'your-deepl-api-key-here') {
     throw new Error('DeepL API key is required. Set it in config file or DEEPL_API_KEY environment variable.');
   }
 

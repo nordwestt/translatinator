@@ -14,12 +14,13 @@
 
 ### 🚀 **Feature Overview**
 
-> 🚀 **Multiple Translation Engines**: Support for Google Translate (default), DeepL, Yandex, and LibreTranslate
-> 💾 **Smart Caching**: Avoid retranslating unchanged content with built-in cache management
-> 🔄 **File Watching**: Auto-translate when source files change
-> 🔧 **Build Integration**: Webpack plugin for seamless build process integration
-> 🎯 **Selective Translation**: Exclude specific keys from translation
-> ⚙️ **Flexible Configuration**: Multiple configuration options and environment variable support
+- 🚀 **Multiple Translation Engines**: Support for Google Translate (default), DeepL, Yandex, and LibreTranslate  
+- 💾 **Smart Caching**: Avoid retranslating unchanged content with built-in cache management  
+- 🔄 **File Watching**: Auto-translate when source files change  
+- 🔧 **Build Integration**: Webpack plugin for seamless build process integration  
+- 🎯 **Selective Translation**: Exclude specific keys from translation  
+- ⚙️ **Flexible Configuration**: Multiple configuration options and environment variable support  
+
 
 </div>
 

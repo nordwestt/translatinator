@@ -9,6 +9,9 @@
    ╚╝   ╚╝  ╚═╝╚╝  ╚╝╚╝  ╚═══╝╚════╝╚════╝╚╝  ╚╝   ╚╝   ╚═╝╚╝  ╚═══╝╚╝  ╚╝   ╚╝    ╚═══╝ ╚╝  ╚═╝
                                                                                                        
 ```
+
+<img width="1408" height="768" alt="translatinator image" src="https://github.com/user-attachments/assets/f3611f31-a30d-4b65-a4df-ada7b9ef6515" />
+
 ### *"Your troubles? Terminated. Your translations? Generated."*
 
 <p align="center">

@@ -1,8 +1,6 @@
 <div align="center">
 <img width="1408" height="768" alt="translatinator image" src="https://github.com/user-attachments/assets/f3611f31-a30d-4b65-a4df-ada7b9ef6515" />
 
-### *"Your troubles? Terminated. Your translations? Generated."*
-
 <p align="center">
   <img src="https://img.shields.io/badge/Mission-TERMINATE%20TRANSLATION%20TASKS-red?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDJMMTMuMDkgOC4yNkwyMCA5TDEzLjA5IDE1Ljc0TDEyIDIyTDEwLjkxIDE1Ljc0TDQgOUwxMC45MSA4LjI2TDEyIDJaIiBmaWxsPSJ3aGl0ZSIvPgo8L3N2Zz4K" />
   <img src="https://img.shields.io/badge/Status-ONLINE%20%26%20OPERATIONAL-brightgreen?style=for-the-badge" />

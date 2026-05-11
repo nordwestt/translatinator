@@ -1,20 +1,20 @@
 ## 🌍 **Automated translation management for web applications supporting multiple translation engines**
 <div align="center">
-<img width="1408" height="768" alt="translatinator image" src="https://github.com/user-attachments/assets/f3611f31-a30d-4b65-a4df-ada7b9ef6515" />
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Mission-TERMINATE%20TRANSLATION%20TASKS-red?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDJMMTMuMDkgOC4yNkwyMCA5TDEzLjA5IDE1Ljc0TDEyIDIyTDEwLjkxIDE1Ljc0TDQgOUwxMC45MSA4LjI2TDEyIDJaIiBmaWxsPSJ3aGl0ZSIvPgo8L3N2Zz4K" />
-  <img src="https://img.shields.io/badge/Status-ONLINE%20%26%20OPERATIONAL-brightgreen?style=for-the-badge" />
-  <img src="https://img.shields.io/badge/Target-ALL%20LANGUAGES-blue?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/Purpose-Translation%20Automation-blue?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/Status-Active-brightgreen?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/Languages-All-blue?style=for-the-badge" />
 </p>
 
 ---
 
-**Translatinator** is an npm package that streamlines the translation workflow for web applications. This unstoppable cybernetic agent will automatically hunt down and translate your source language file to multiple target languages using various translation engines including Google Translate, DeepL, Yandex, and LibreTranslate, with intelligent caching and build process integration. 
+**Translatinator** is an npm package that streamlines the translation workflow for web applications. It automatically translates your source language file into multiple target languages with various translation engines including Google Translate, DeepL, Yandex, LibreTranslate, and LLM-assisted translation via translategemma, with intelligent caching and build process integration.
 
-### 🚀 **Feature Overview**
+### 🚀 **Features**
 
-- 🚀 **Multiple Translation Engines**: Support for Google Translate (default), DeepL, Yandex, and LibreTranslate  
+- 🚀 **Multiple Translation Engines**: Google Translate (default), DeepL, Yandex, LibreTranslate  
+- 🧠 **LLM-Assisted Translation**: Integration with translategemma for local/cloud LLM-based translation
 - 💾 **Smart Caching**: Avoid retranslating unchanged content with built-in cache management  
 - 🔄 **File Watching**: Auto-translate when source files change  
 - 🔧 **Build Integration**: Webpack plugin for seamless build process integration  
@@ -41,40 +41,34 @@ npm install translatinator
 npx translatinator init
 ```
 
-<div align="center">
-
-### *"I need your clothes, your boots, and your translation parameters"*
-
-</div>
-
-This command deploys a `translatinator.config.json` with tactical parameters:
+This command generates a `translatinator.config.json` with default settings:
 
 ```json
 {
-  "engine": "google",              // ← Primary weapons system
-  "apiKey": "your-api-key-here",   // ← Authorization codes
-  "sourceFile": "en.json",         // ← Target acquisition file
+  "engine": "google",
+  "apiKey": "your-api-key-here",
+  "sourceFile": "en.json",
   "targetLanguages": ["de", "fr", "es", "it", "nl", "pl"],
-  "localesDir": "./locales",       // ← Mission zone
-  "watch": false,                  // ← Surveillance mode
-  "force": false,                  // ← Override protocols
-  "filePattern": "{lang}.json",    // ← Output designation
-  "preserveFormatting": true,      // ← Data integrity
+  "localesDir": "./locales",
+  "watch": false,
+  "force": false,
+  "filePattern": "{lang}.json",
+  "preserveFormatting": true,
   "excludeKeys": ["version", "build", "debug"],
   "cacheDir": ".translatinator-cache",
-  "verbose": false                 // ← Stealth mode
+  "verbose": false
 }
 ```
 
-*Translatinator scans for configuration files in this tactical order:*
-- `translatinator.config.js` ← *Primary target*
-- `translatinator.config.json` ← *Secondary target*
-- `.translatinatorrc` ← *Backup systems*
-- `.translatinatorrc.json` ← *Emergency protocols*
+*Translatinator scans for configuration files in this order:*
+- `translatinator.config.js`
+- `translatinator.config.json`
+- `.translatinatorrc`
+- `.translatinatorrc.json`
 
-### **2: Intel Preparation**
+### **2: Source File**
 
-Deploy your primary language assets (`locales/en.json`):
+Create your primary language file (`locales/en.json`):
 
 ```json
 {
@@ -91,51 +85,50 @@ Deploy your primary language assets (`locales/en.json`):
 }
 ```
 
-### **3: Mission Execution**
+### **3: Run Translation**
 
 ```bash
 npx translatinator translate
 ```
 
-**🎯 TARGET ACQUIRED → TRANSLATIONS DEPLOYED**  
-*Files like `de.json`, `fr.json` will be generated with extreme precision*
+**Target files** like `de.json`, `fr.json` will be generated automatically.
 
 ---
 
 ## 🔧 **Config Options**
 
-| **Option** | **Type** | **Default** | **Description** |
+| Option | Type | Default | Description |
 |---------------|----------|-------------|-------------------------|
-| `engine` | `string` | `"google"` | **Translation Core:** 'google', 'deepl', 'yandex', or 'libre' |
-| `apiKey` | `string` | **⚠️ REQUIRED** | **Authorization Code** for chosen engine |
-| `endpointUrl` | `string` | `undefined` | **Custom Base** for LibreTranslate/self-hosted |
-| `sourceFile` | `string` | `"en.json"` | **Primary Target** language file |
-| `targetLanguages` | `string[]` | `[]` | **Elimination List** of language codes |
-| `localesDir` | `string` | `"./locales"` | **Mission HQ** directory |
-| `watch` | `boolean` | `false` | **Surveillance Mode** for file monitoring |
-| `force` | `boolean` | `false` | **Override Protocol** for retranslation |
-| `filePattern` | `string` | `"{lang}.json"` | **Output Template** pattern |
-| `preserveFormatting` | `boolean` | `true` | **Data Integrity** maintenance |
-| `excludeKeys` | `string[]` | `[]` | **Protected Assets** from translation |
-| `cacheDir` | `string` | `".translatinator-cache"` | **Memory Bank** location |
-| `verbose` | `boolean` | `false` | **Detailed Reports** activation |
+| `engine` | `string` | `"google"` | Translation engine: 'google', 'deepl', 'yandex', 'libre', or 'llm' |
+| `apiKey` | `string` | **⚠️ REQUIRED** | API key for the chosen engine |
+| `endpointUrl` | `string` | `undefined` | Custom endpoint for LibreTranslate/self-hosted or llm |
+| `sourceFile` | `string` | `"en.json"` | Source language file |
+| `targetLanguages` | `string[]` | `[]` | Target language codes |
+| `localesDir` | `string` | `"./locales"` | Output directory |
+| `watch` | `boolean` | `false` | Enable file watching |
+| `force` | `boolean` | `false` | Force retranslation of all content |
+| `filePattern` | `string` | `"{lang}.json"` | Output file naming pattern |
+| `preserveFormatting` | `boolean` | `true` | Preserve formatting in translations |
+| `excludeKeys` | `string[]` | `[]` | Keys to exclude from translation |
+| `cacheDir` | `string` | `".translatinator-cache"` | Cache directory |
+| `verbose` | `boolean` | `false` | Enable verbose output |
 
 ---
 
 ## 🎮 **CLI**
 
-### **Primary Mission Control**
+### **Translate**
 ```bash
-npx translatinator translate [parameters]
+npx translatinator translate [options]
 ```
 
-**Available Parameters:**
-- `-c, --config <path>` ← *Mission config file location*
-- `-f, --force` ← *Override all existing translations*
-- `-w, --watch` ← *Activate surveillance mode*
-- `-v, --verbose` ← *Enable detailed combat logs*
+**Options:**
+- `-c, --config <path>` — Config file path
+- `-f, --force` — Force retranslate all content
+- `-w, --watch` — Watch for file changes
+- `-v, --verbose` — Enable verbose logging
 
-### **System Initialization**
+### **Init**
 ```bash
 npx translatinator init [-o, --output <path>]
 ```
@@ -144,43 +137,37 @@ npx translatinator init [-o, --output <path>]
 
 ## 🤖 **TRANSLATION ENGINES**
 
-<div align="center">
-
-*"Each engine is specialized for different linguistic combat scenarios"*
-
-</div>
-
-### **🔴 GOOGLE TRANSLATE CORE** *(Default Hunter-Killer)*
+### **🔴 GOOGLE TRANSLATE**
 ```json
 {
   "engine": "google",
   "apiKey": "your-google-api-key"
 }
 ```
-- ✅ **Maximum language coverage** across all territories  
+- ✅ Broad language support
 
-### **🟠 DEEPL NEURAL NETWORK** *(German Precision Engineering)*
+### **🟠 DEEPL**
 ```json
 {
   "engine": "deepl",
   "apiKey": "your-deepl-api-key"
 }
 ```
-- 🎯 **Requires DeepL authorization codes**
-- 🏆 **Superior translation accuracy**
-- ⚠️ **Limited language support** but maximum quality
+- 🎯 Requires DeepL API key
+- 🏆 High accuracy translations
+- ⚠️ Limited language coverage
 
-### **🟡 YANDEX COMBAT UNIT** *(Eastern Front Specialist)*
+### **🟡 YANDEX**
 ```json
 {
   "engine": "yandex", 
   "apiKey": "your-yandex-api-key"
 }
 ```
-- 🔑 **Requires Yandex API access**
-- 🇷🇺 **Optimized for Russian & Eastern European** targets
+- 🔑 Requires Yandex API key
+- 🇷🇺 Optimized for Russian & Eastern European languages
 
-### **🟢 LIBRETRANSLATE RESISTANCE** *(Freedom Fighter)*
+### **🟢 LIBRETRANSLATE**
 ```json
 {
   "engine": "libre",
@@ -188,35 +175,59 @@ npx translatinator init [-o, --output <path>]
   "apiKey": "your-api-key-if-required"
 }
 ```
-- 🛡️ **Open source translation core**
-- 🏠 **Self-hostable for maximum security**
-- 🔒 **Privacy-focused operations**
+- 🛡️ Open source
+- 🏠 Self-hostable
+- 🔒 Privacy-focused
 
-### **Intel & Diagnostics**
+### **🧠 LLM (translategemma)**
+
+LLM provides LLM-powered translation using translategemma models. It can run locally or connect to a cloud endpoint, offering high-quality, context-aware translations.
+
+```json
+{
+  "engine": "llm",
+  "endpointUrl": "http://localhost:8765",
+  "sourceFile": "en.json",
+  "targetLanguages": ["de", "fr", "es"],
+  "localesDir": "./locales"
+}
+```
+
+Features:
+- 🤖 LLM-powered translations via translategemma models
+- 💻 Local execution (no data leaves your machine)
+- ☁️ Optional cloud endpoint support
+- 🎯 Context-aware translations
+- 🌐 Same CLI/API interface as other engines
+
+### **Utilities**
 ```bash
-npx translatinator clear-cache [-c, --config <path>] # ← Memory wipe
+npx translatinator clear-cache [-c, --config <path>]
 ```
 
 ---
 
-## 🧠 **NEURAL NET PROGRAMMING API**
-
-<div align="center">
-
-*"I can be programmed for autonomous operation"*
-
-</div>
+## 🧠 **Programming API**
 
 ```javascript
 import { Translatinator, translate } from 'translatinator';
 
-// ⚡ RAPID DEPLOYMENT with Google Core (Default)
-await translate('./mission-config.json');
+// Quick translation
+await translate('./config.json');
 
-// 🤖 ADVANCED CYBORG CONFIGURATIONS
+// Programmatic configuration
 
-// DeepL Precision Unit
-const deeplMission = {
+// Google Translate
+const googleConfig = {
+  engine: 'google',
+  apiKey: 'your-google-api-key',
+  sourceFile: 'en.json',
+  targetLanguages: ['de', 'fr', 'es'],
+  localesDir: './i18n'
+};
+
+// DeepL
+const deeplConfig = {
   engine: 'deepl',
   apiKey: 'your-deepl-api-key',
   sourceFile: 'en.json',
@@ -224,8 +235,8 @@ const deeplMission = {
   localesDir: './i18n'
 };
 
-// Yandex Combat Specialist  
-const yandexMission = {
+// Yandex
+const yandexConfig = {
   engine: 'yandex',
   apiKey: 'your-yandex-api-key',
   sourceFile: 'en.json', 
@@ -233,18 +244,27 @@ const yandexMission = {
   localesDir: './i18n'
 };
 
-// LibreTranslate Freedom Fighter
-const libreMission = {
+// LibreTranslate
+const libreConfig = {
   engine: 'libre',
-  endpointUrl: 'https://your-resistance-base.com',
-  apiKey: 'optional-access-code',
+  endpointUrl: 'https://your-libretranslate-instance.com',
+  apiKey: 'optional-api-key',
   sourceFile: 'en.json',
   targetLanguages: ['de', 'fr', 'es'],
   localesDir: './i18n'
 };
 
-// 🚀 MISSION EXECUTION
-const translatinator = new Translatinator(deeplMission);
+// LLM (recommended to use translategemma)
+const llmConfig = {
+  engine: 'llm',
+  endpointUrl: 'http://localhost:8765',
+  sourceFile: 'en.json',
+  targetLanguages: ['de', 'fr', 'es'],
+  localesDir: './i18n'
+};
+
+// Execute
+const translatinator = new Translatinator(deeplConfig);
 await translatinator.initialize();
 await translatinator.translateAll();
 
@@ -252,21 +272,18 @@ await translatinator.translateAll();
 
 ---
 
-## ⚙️ **CYBERDYNE SYSTEMS INTEGRATION**
+## ⚙️ **Webpack Integration**
 
-### **Webpack Combat Module**
-
-*Automate translation during build sequences:*
+*Automate translation during build:*
 
 ```javascript
-// webpack.config.js (Legacy Systems)
+// webpack.config.js
 const { TranslatinatorWebpackPlugin } = require('translatinator');
 
-// Modern Neural Networks (ES6/TypeScript)
+// or ES6/TypeScript
 import { TranslatinatorWebpackPlugin } from 'translatinator';
 
 module.exports = {
-  // ... your tactical webpack config
   plugins: [
     new TranslatinatorWebpackPlugin({
       configPath: './translatinator.config.json'
@@ -277,55 +294,41 @@ module.exports = {
 
 ---
 
-## 🌐 **ENVIRONMENT VARIABLES OVERRIDE**
+## 🌐 **Environment Variables**
 
-*Stealth configuration through environment parameters:*
+*Override configuration via environment variables:*
 
 ```bash
-# 🔧 CORE SYSTEM VARIABLES
+# Core settings
 export TRANSLATION_ENGINE="deepl"
-export TRANSLATION_API_KEY="your-classified-key"
-export TRANSLATION_ENDPOINT_URL="https://your-secure-endpoint.com"
+export TRANSLATION_API_KEY="your-api-key"
+export TRANSLATION_ENDPOINT_URL="https://your-endpoint.com"
 export TRANSLATINATOR_SOURCE_FILE="en.json"
 export TRANSLATINATOR_TARGET_LANGUAGES="de,fr,es,it"
 
-# 🔑 DIRECT DEEPL AUTHORIZATION (Auto-selects DeepL engine)
-export DEEPL_API_KEY="your-deepl-access-code"
+# Direct DeepL key (auto-selects DeepL engine)
+export DEEPL_API_KEY="your-deepl-api-key"
 ```
 
 ---
 
-## 💾 **QUANTUM MEMORY CACHE SYSTEM**
+## 💾 **Caching System**
 
-<div align="center">
+**Intelligent Caching:**
+- Translations cached by source text + target language
+- Cache stored in `.translatinator-cache` directory (configurable)
+- Use `--force` or `force: true` to bypass cache and retranslate
+- Run `npx translatinator clear-cache` to clear all cached translations
 
-*"My CPU is a neural net processor; a learning computer with perfect memory"*
-
-</div>
-
-**🧠 INTELLIGENT CACHING PROTOCOL:**
-- Translations cached by source text + target language fingerprint
-- Cache stored in `.translatinator-cache` bunker (configurable location)
-- Use `--force` or `force: true` to override cache and retranslate
-- Execute `npx translatinator clear-cache` for complete memory wipe
-
-**🔄 CACHE ADVANTAGES:**
-- ⚡ Lightning-fast repeat translations
-- 💰 Reduced API costs and rate limiting
+**Benefits:**
+- ⚡ Faster repeat translations
+- 💰 Reduced API usage and costs
 - 🛡️ Offline capability for cached content
-- 🎯 Surgical precision in updating only new content
+- 🎯 Only translates new or changed content
 
 ---
 
-## 🌍 **GLOBAL LANGUAGE TERMINATION TARGETS**
-
-<div align="center">
-
-*"I can terminate translations in any human language"*
-
-</div>
-
-**📡 SUPPORTED LANGUAGE CODES:**
+## 🌍 **Supported Languages**
 
 ```
 🇺🇸 en - English      🇩🇪 de - German       🇫🇷 fr - French
@@ -336,71 +339,56 @@ export DEEPL_API_KEY="your-deepl-access-code"
 
 ---
 
-## 👁️ **SURVEILLANCE MODE ACTIVATED**
+## 👁️ **Watch Mode**
 
-*Continuous monitoring and auto-translation when targets change:*
+*Continuous monitoring and auto-translation when source files change:*
 
 ```bash
 npx translatinator translate --watch
 ```
 
-**Alternative Configuration Deployment:**
+**Config alternative:**
 ```json
 {
   "watch": true
 }
 ```
 
-**🔍 SURVEILLANCE FEATURES:**
+**Features:**
 - Real-time file system monitoring
-- Instant translation upon source modification
+- Instant translation on source modification
 - Zero-downtime operation
-- Automatic mission continuation
 
 ---
 
-## 🛡️ **DEFENSIVE PROTOCOLS & ERROR HANDLING**
+## 🛡️ **Error Handling**
 
-<div align="center">
-
-*"My mission is to protect you from translation failures"*
-
-</div>
-
-**🔧 BUILT-IN PROTECTION SYSTEMS:**
+**Built-in protections:**
 - 🔄 **API Rate Limiting** with intelligent retry logic
 - 🌐 **Network Failure Recovery** with automatic reconnection
-- ✅ **Configuration Validation** prevents mission failures  
+- ✅ **Configuration Validation** prevents runtime errors
 - 📁 **Missing File Detection** with clear error reporting
 - 🛡️ **Graceful Degradation** when translation engines fail
 
 ---
 
-## 🤝 **ALLIANCE PROTOCOL**
+## 🤝 **Contributing**
 
-*Join the resistance against manual translation tasks*
-
-We welcome human collaborators in the fight against translation inefficiency. Submit your tactical improvements and feature requests through our secure GitHub communication channels.
+We welcome contributions! Submit improvements and feature requests through GitHub issues and pull requests.
 
 ---
 
-## 📜 **Apache LICENSE**
+## 📜 **License**
 
-**Apache 2.0 License** - Open source technology for the freedom of all developers
+**Apache 2.0 License**
 
 ---
 
-## 🆘 **TACTICAL SUPPORT NETWORK**
+## 🆘 **Support**
 
-<div align="center">
-
-*"If you need assistance, I'll be back with solutions"*
-
-</div>
-
-- 🐛 **Bug Reports & Issues:** Deploy via GitHub Issue Tracker
+- 🐛 **Bug Reports & Issues:** GitHub Issue Tracker
 - 📚 **Engine Documentation:** Consult individual translation engine APIs  
-- 📖 **Operation Manual:** This README contains all tactical information
+- 📖 **Manual:** This README contains all usage information
 
 ---
 
@@ -408,7 +396,7 @@ We welcome human collaborators in the fight against translation inefficiency. Su
 
 ### *"Hasta la vista, manual translations!"*
 
-**Made with 🤖 for the developer resistance movement**
+**Made for the developer community**
 
 ---
 

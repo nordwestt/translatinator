@@ -15,7 +15,12 @@ export class ConfigLoader {
       cacheDir: '.translatinator-cache',
       verbose: false,
       targetLanguages: [],
-      excludeKeys: []
+      excludeKeys: [],
+      llm: {
+        model: 'translategemma',
+        baseUrl: 'http://localhost:11434',
+        numCtx: 2048
+      }
     };
 
     // Load environment variables first (lowest priority)
@@ -43,6 +48,16 @@ export class ConfigLoader {
     
     if (process.env.TRANSLATINATOR_TARGET_LANGUAGES) {
       envConfig.targetLanguages = process.env.TRANSLATINATOR_TARGET_LANGUAGES.split(',');
+    }
+
+    if (process.env.TRANSLATION_LLM_MODEL || process.env.TRANSLATION_LLM_BASE_URL) {
+      envConfig.llm = {};
+      if (process.env.TRANSLATION_LLM_MODEL) {
+        envConfig.llm.model = process.env.TRANSLATION_LLM_MODEL;
+      }
+      if (process.env.TRANSLATION_LLM_BASE_URL) {
+        envConfig.llm.baseUrl = process.env.TRANSLATION_LLM_BASE_URL;
+      }
     }
 
     // If a specific config path is provided, only try to load that file

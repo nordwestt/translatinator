@@ -18,6 +18,10 @@ jest.mock('translate', () => {
   return mockTranslate;
 });
 
+jest.mock('axios', () => ({
+  post: jest.fn()
+}));
+
 describe('TranslationService', () => {
   let translator: TranslationService;
   let cacheManager: CacheManager;
@@ -231,6 +235,226 @@ describe('TranslationService', () => {
 
     it('should not throw error for usage calls', async () => {
       await expect(translator.getUsage()).resolves.toBeDefined();
+    });
+  });
+
+  describe('LLM (OpenAI-compatible API)', () => {
+    let llmTranslator: TranslationService;
+    const mockAxios = require('axios');
+
+    beforeEach(() => {
+      mockAxios.post.mockReset();
+      mockAxios.post.mockResolvedValue({
+        data: {
+          choices: [{ message: { content: 'Hallo' } }]
+        }
+      });
+
+      const llmConfig: TranslatinatorConfig = {
+        engine: 'llm',
+        sourceFile: 'en.json',
+        targetLanguages: ['de', 'fr'],
+        localesDir: './locales',
+        llm: {
+          model: 'translategemma',
+          baseUrl: 'http://localhost:11434',
+          numCtx: 2048
+        }
+      };
+
+      llmTranslator = new TranslationService(llmConfig, cacheManager, logger);
+    });
+
+    it('should translate text using OpenAI-compatible API', async () => {
+      const result = await llmTranslator.translateText('Hello', 'de');
+
+      expect(result).toBe('Hallo');
+      expect(mockAxios.post).toHaveBeenCalledTimes(1);
+    });
+
+    it('should call the correct OpenAI-compatible endpoint', async () => {
+      await llmTranslator.translateText('Hello', 'de');
+
+      expect(mockAxios.post).toHaveBeenCalledWith(
+        'http://localhost:11434/v1/chat/completions',
+        expect.objectContaining({
+          model: 'translategemma',
+          messages: expect.arrayContaining([
+            expect.objectContaining({ role: 'user' })
+          ]),
+          stream: false
+        }),
+        expect.objectContaining({
+          headers: { 'Content-Type': 'application/json' }
+        })
+      );
+    });
+
+    it('should construct the TranslateGemma prompt with language names and codes', async () => {
+      await llmTranslator.translateText('Hello', 'de');
+
+      const callArgs = mockAxios.post.mock.calls[0];
+      const payload = callArgs[1];
+      const prompt = payload.messages[0].content;
+
+      expect(prompt).toContain('English (en) to German (de) translator');
+      expect(prompt).toContain('Hello');
+      expect(prompt).toMatch(/\n\n\nHello/);
+    });
+
+    it('should handle region-specific language codes', async () => {
+      await llmTranslator.translateText('Hello', 'de-DE', 'en-US');
+
+      const callArgs = mockAxios.post.mock.calls[0];
+      const prompt = callArgs[1].messages[0].content;
+
+      expect(prompt).toContain('English (en-US) to German (de-DE) translator');
+    });
+
+    it('should include Bearer token when API key is provided', async () => {
+      const configWithKey: TranslatinatorConfig = {
+        engine: 'llm',
+        apiKey: 'sk-test-key',
+        sourceFile: 'en.json',
+        targetLanguages: ['de'],
+        localesDir: './locales',
+        llm: {
+          model: 'translategemma',
+          baseUrl: 'http://localhost:11434'
+        }
+      };
+
+      const translatorWithKey = new TranslationService(configWithKey, cacheManager, logger);
+      await translatorWithKey.translateText('Hello', 'de');
+
+      expect(mockAxios.post).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.any(Object),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'Authorization': 'Bearer sk-test-key'
+          })
+        })
+      );
+    });
+
+    it('should use cached translations when not forcing', async () => {
+      cacheManager.setCachedTranslation('Hello', 'de', {
+        original: 'Hello',
+        translated: 'Hallo (cached)',
+        timestamp: Date.now(),
+        version: '1.0.0'
+      });
+
+      const result = await llmTranslator.translateText('Hello', 'de');
+
+      expect(result).toBe('Hallo (cached)');
+      expect(mockAxios.post).not.toHaveBeenCalled();
+    });
+
+    it('should bypass cache when force is enabled', async () => {
+      cacheManager.setCachedTranslation('Hello', 'de', {
+        original: 'Hello',
+        translated: 'Hallo (cached)',
+        timestamp: Date.now(),
+        version: '1.0.0'
+      });
+
+      const forceConfig: TranslatinatorConfig = {
+        engine: 'llm',
+        sourceFile: 'en.json',
+        targetLanguages: ['de'],
+        localesDir: './locales',
+        force: true,
+        llm: {
+          model: 'translategemma',
+          baseUrl: 'http://localhost:11434'
+        }
+      };
+
+      const forceTranslator = new TranslationService(forceConfig, cacheManager, logger);
+      const result = await forceTranslator.translateText('Hello', 'de');
+
+      expect(result).toBe('Hallo');
+      expect(mockAxios.post).toHaveBeenCalled();
+    });
+
+    it('should throw error when API response is invalid', async () => {
+      mockAxios.post.mockResolvedValue({
+        data: { choices: [] }
+      });
+
+      await expect(llmTranslator.translateText('Hello', 'de')).rejects.toThrow(
+        'Invalid response from OpenAI-compatible API'
+      );
+    });
+
+    it('should throw error on API failure', async () => {
+      mockAxios.post.mockRejectedValue(new Error('Connection refused'));
+
+      await expect(llmTranslator.translateText('Hello', 'de')).rejects.toThrow('Connection refused');
+    });
+
+    it('should use default LLM config values', async () => {
+      const minimalConfig: TranslatinatorConfig = {
+        engine: 'llm',
+        sourceFile: 'en.json',
+        targetLanguages: ['de'],
+        localesDir: './locales'
+      };
+
+      const minimalTranslator = new TranslationService(minimalConfig, cacheManager, logger);
+      await minimalTranslator.translateText('Hello', 'de');
+
+      expect(mockAxios.post).toHaveBeenCalledWith(
+        'http://localhost:11434/v1/chat/completions',
+        expect.objectContaining({ model: 'translategemma' }),
+        expect.any(Object)
+      );
+    });
+
+    it('should use custom baseUrl and model when configured', async () => {
+      const customConfig: TranslatinatorConfig = {
+        engine: 'llm',
+        sourceFile: 'en.json',
+        targetLanguages: ['de'],
+        localesDir: './locales',
+        llm: {
+          model: 'translategemma:12b',
+          baseUrl: 'http://192.168.1.100:8080'
+        }
+      };
+
+      const customTranslator = new TranslationService(customConfig, cacheManager, logger);
+      await customTranslator.translateText('Hello', 'de');
+
+      expect(mockAxios.post).toHaveBeenCalledWith(
+        'http://192.168.1.100:8080/v1/chat/completions',
+        expect.objectContaining({ model: 'translategemma:12b' }),
+        expect.any(Object)
+      );
+    });
+
+    it('should translate objects with LLM engine', async () => {
+      const input = { greeting: 'Hello', farewell: 'Goodbye' };
+
+      mockAxios.post
+        .mockResolvedValueOnce({ data: { choices: [{ message: { content: 'Hallo' } }] } })
+        .mockResolvedValueOnce({ data: { choices: [{ message: { content: 'Auf Wiedersehen' } }] } });
+
+      const result = await llmTranslator.translateObject(input, 'de');
+
+      expect(result).toEqual({ greeting: 'Hallo', farewell: 'Auf Wiedersehen' });
+      expect(mockAxios.post).toHaveBeenCalledTimes(2);
+    });
+
+    it('should return usage info with llm engine', async () => {
+      const result = await llmTranslator.getUsage();
+
+      expect(result).toEqual({
+        character: { count: 0, limit: 'unlimited' },
+        engine: 'llm'
+      });
     });
   });
 });

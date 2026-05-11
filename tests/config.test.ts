@@ -19,6 +19,8 @@ describe('ConfigLoader', () => {
     delete process.env.TRANSLATION_API_KEY;
     delete process.env.TRANSLATINATOR_SOURCE_FILE;
     delete process.env.TRANSLATINATOR_TARGET_LANGUAGES;
+    delete process.env.TRANSLATION_LLM_MODEL;
+    delete process.env.TRANSLATION_LLM_BASE_URL;
   });
 
   describe('loadConfig', () => {
@@ -115,6 +117,25 @@ describe('ConfigLoader', () => {
         const config = await ConfigLoader.loadConfig();
         expect(config.apiKey).toBe('found-key');
         expect(config.sourceFile).toBe('found.json');
+      } finally {
+        process.chdir(originalCwd);
+      }
+    });
+
+    it('should load LLM config from environment variables', async () => {
+      process.env.TRANSLATION_LLM_MODEL = 'translategemma:12b';
+      process.env.TRANSLATION_LLM_BASE_URL = 'http://192.168.1.100:11434';
+
+      await fs.ensureDir(testDir);
+      const originalCwd = process.cwd();
+
+      try {
+        process.chdir(testDir);
+        const config = await ConfigLoader.loadConfig();
+
+        expect(config.llm).toBeDefined();
+        expect(config.llm?.model).toBe('translategemma:12b');
+        expect(config.llm?.baseUrl).toBe('http://192.168.1.100:11434');
       } finally {
         process.chdir(originalCwd);
       }

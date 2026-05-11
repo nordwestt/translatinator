@@ -71,6 +71,25 @@ describe('Index API', () => {
       await expect(translate()).rejects.toThrow('API key is required');
     });
 
+    it('should skip API key check for ollama engine', async () => {
+      const mockConfig = {
+        engine: 'ollama',
+        targetLanguages: ['de', 'fr'],
+        sourceFile: 'en.json',
+        localesDir: './locales',
+        ollama: {
+          model: 'translategemma',
+          baseUrl: 'http://localhost:11434'
+        }
+      };
+
+      mockConfigLoader.loadConfig.mockResolvedValue(mockConfig);
+
+      await expect(translate()).resolves.not.toThrow();
+      expect(mockTranslatinator.initialize).toHaveBeenCalled();
+      expect(mockTranslatinator.translateAll).toHaveBeenCalled();
+    });
+
     it('should throw error when target languages are missing', async () => {
       const mockConfig = {
         apiKey: 'test-key',

@@ -28,6 +28,10 @@ jest.mock('translate', () => {
   return mockTranslate;
 });
 
+jest.mock('axios', () => ({
+  post: jest.fn()
+}));
+
 describe('Integration Tests', () => {
   let testDir: string;
   let localesDir: string;
@@ -320,6 +324,86 @@ describe('Integration Tests', () => {
       // 5. Verify content
       const deData = await fs.readJson(path.join(localesDir, 'locale-de.json'));
       expect(deData.greeting).toBe('Hallo');
+    });
+  });
+
+  describe('Ollama (OpenAI-compatible API)', () => {
+    beforeEach(() => {
+      const mockAxios = require('axios');
+      mockAxios.post.mockReset();
+      mockAxios.post.mockResolvedValue({
+        data: {
+          choices: [{ message: { content: 'Hallo' } }]
+        }
+      });
+    });
+
+    it('should complete full translation workflow with Ollama engine and no API key', async () => {
+      const sourceData = {
+        greeting: 'Hello',
+        farewell: 'Goodbye'
+      };
+
+      await fs.writeJson(path.join(localesDir, 'en.json'), sourceData);
+
+      const config = {
+        engine: 'ollama',
+        sourceFile: 'en.json',
+        targetLanguages: ['de'],
+        localesDir: localesDir,
+        cacheDir: path.join(testDir, '.cache'),
+        ollama: {
+          model: 'translategemma',
+          baseUrl: 'http://localhost:11434'
+        }
+      };
+
+      await fs.writeJson(configPath, config);
+
+      await translate(configPath);
+
+      const deFile = path.join(localesDir, 'de.json');
+      expect(await fs.pathExists(deFile)).toBe(true);
+
+      const deData = await fs.readJson(deFile);
+      expect(deData.greeting).toBe('Hallo');
+      expect(deData.farewell).toBe('Hallo');
+    });
+
+    it('should send the correct OpenAI-compatible request format', async () => {
+      const sourceData = { greeting: 'Hello' };
+      await fs.writeJson(path.join(localesDir, 'en.json'), sourceData);
+
+      const config = {
+        engine: 'ollama',
+        sourceFile: 'en.json',
+        targetLanguages: ['de'],
+        localesDir: localesDir,
+        cacheDir: path.join(testDir, '.cache'),
+        ollama: {
+          model: 'translategemma',
+          baseUrl: 'http://localhost:11434'
+        }
+      };
+
+      await fs.writeJson(configPath, config);
+
+      await translate(configPath);
+
+      const mockAxios = require('axios');
+      expect(mockAxios.post).toHaveBeenCalledWith(
+        'http://localhost:11434/v1/chat/completions',
+        expect.objectContaining({
+          model: 'translategemma',
+          messages: expect.arrayContaining([
+            expect.objectContaining({ role: 'user' })
+          ]),
+          stream: false
+        }),
+        expect.objectContaining({
+          headers: { 'Content-Type': 'application/json' }
+        })
+      );
     });
   });
 });

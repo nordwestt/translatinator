@@ -41,6 +41,14 @@ program
     try {
       await ConfigLoader.createSampleConfig(options.output);
       console.log(`Sample configuration created at ${options.output}`);
+      console.log('');
+      console.log('To use TranslateGemma via Ollama (OpenAI-compatible API):');
+      console.log('  {');
+      console.log('    "engine": "ollama",');
+      console.log('    "ollama": { "model": "translategemma", "baseUrl": "http://localhost:11434" },');
+      console.log('    "sourceFile": "en.json",');
+      console.log('    "targetLanguages": ["de", "fr", "es"]');
+      console.log('  }');
     } catch (error) {
       console.error('Failed to create config file:', error);
       process.exit(1);

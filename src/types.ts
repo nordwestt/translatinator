@@ -1,4 +1,4 @@
-export type TranslationEngine = 'google' | 'yandex' | 'libre' | 'deepl';
+export type TranslationEngine = 'google' | 'yandex' | 'libre' | 'deepl' | 'ollama';
 
 export interface TranslatinatorConfig {
   /** Translation engine to use (default: 'google') */
@@ -39,6 +39,18 @@ export interface TranslatinatorConfig {
   
   /** Enable verbose logging (default: false) */
   verbose?: boolean;
+
+  /** OpenAI-compatible API configuration (used with 'ollama' engine) */
+  ollama?: OllamaConfig;
+}
+
+export interface OllamaConfig {
+  /** Model name (default: 'translategemma') */
+  model?: string;
+  /** Base URL for the OpenAI-compatible API (default: 'http://localhost:11434') */
+  baseUrl?: string;
+  /** Optional context window size */
+  numCtx?: number;
 }
 
 export interface TranslationEntry {

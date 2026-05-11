@@ -8,10 +8,12 @@ export * from './types';
 export async function translate(configPath?: string): Promise<void> {
   const config = await ConfigLoader.loadConfig(configPath);
 
-  // Check for API key
-  const hasApiKey = config.apiKey;
-  if (!hasApiKey || hasApiKey === 'your-api-key-here') {
-    throw new Error('API key is required. Set it in config file or TRANSLATION_API_KEY environment variable.');
+  // Check for API key (not required for Ollama/local models)
+  if (config.engine !== 'ollama') {
+    const hasApiKey = config.apiKey;
+    if (!hasApiKey || hasApiKey === 'your-api-key-here') {
+      throw new Error('API key is required. Set it in config file or TRANSLATION_API_KEY environment variable.');
+    }
   }
 
   if (!config.targetLanguages || config.targetLanguages.length === 0) {
@@ -104,11 +106,13 @@ export class TranslatinatorNextPlugin {
 
       const config = await ConfigLoader.loadConfig(this.config.configPath);
       
-      // Check for API key
-      const hasApiKey = config.apiKey;
-      if (!hasApiKey || hasApiKey === 'your-api-key-here') {
-        console.warn('[Translatinator] No API key found, skipping translation setup');
-        return;
+      // Check for API key (not required for Ollama/local models)
+      if (config.engine !== 'ollama') {
+        const hasApiKey = config.apiKey;
+        if (!hasApiKey || hasApiKey === 'your-api-key-here') {
+          console.warn('[Translatinator] No API key found, skipping translation setup');
+          return;
+        }
       }
 
       if (!config.targetLanguages || config.targetLanguages.length === 0) {
@@ -202,11 +206,13 @@ export class TranslatinatorDevServer {
 
       const config = await ConfigLoader.loadConfig(this.config.configPath);
       
-      // Check for API key
-      const hasApiKey = config.apiKey;
-      if (!hasApiKey || hasApiKey === 'your-api-key-here') {
-        console.warn('[Translatinator Dev] No API key found, translation watcher not started');
-        return;
+      // Check for API key (not required for Ollama/local models)
+      if (config.engine !== 'ollama') {
+        const hasApiKey = config.apiKey;
+        if (!hasApiKey || hasApiKey === 'your-api-key-here') {
+          console.warn('[Translatinator Dev] No API key found, translation watcher not started');
+          return;
+        }
       }
 
       if (!config.targetLanguages || config.targetLanguages.length === 0) {

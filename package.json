@@ -1,6 +1,6 @@
 {
   "name": "translatinator",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Automated translation management for web applications. Supports multiple translation engines (Google, DeepL, Yandex, LibreTranslate)",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

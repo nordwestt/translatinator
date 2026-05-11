@@ -8,7 +8,7 @@ export * from './types';
 export async function translate(configPath?: string): Promise<void> {
   const config = await ConfigLoader.loadConfig(configPath);
 
-  // Check for API key (not required for Ollama/local models)
+  // Check for API key (not required for LLM/local models)
   if (config.engine !== 'llm') {
     const hasApiKey = config.apiKey;
     if (!hasApiKey || hasApiKey === 'your-api-key-here') {
@@ -106,7 +106,7 @@ export class TranslatinatorNextPlugin {
 
       const config = await ConfigLoader.loadConfig(this.config.configPath);
       
-      // Check for API key (not required for Ollama/local models)
+      // Check for API key (not required for LLM/local models)
       if (config.engine !== 'llm') {
         const hasApiKey = config.apiKey;
         if (!hasApiKey || hasApiKey === 'your-api-key-here') {
@@ -206,7 +206,7 @@ export class TranslatinatorDevServer {
 
       const config = await ConfigLoader.loadConfig(this.config.configPath);
       
-      // Check for API key (not required for Ollama/local models)
+      // Check for API key (not required for LLM/local models)
       if (config.engine !== 'llm') {
         const hasApiKey = config.apiKey;
         if (!hasApiKey || hasApiKey === 'your-api-key-here') {

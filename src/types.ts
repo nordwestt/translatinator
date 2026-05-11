@@ -41,10 +41,10 @@ export interface TranslatinatorConfig {
   verbose?: boolean;
 
   /** OpenAI-compatible API configuration (used with 'llm' engine) */
-  llm?: OllamaConfig;
+  llm?: LLMConfig;
 }
 
-export interface OllamaConfig {
+export interface LLMConfig {
   /** Model name (default: 'translategemma') */
   model?: string;
   /** Base URL for the OpenAI-compatible API (default: 'http://localhost:11434') */

@@ -50,13 +50,13 @@ export class ConfigLoader {
       envConfig.targetLanguages = process.env.TRANSLATINATOR_TARGET_LANGUAGES.split(',');
     }
 
-    if (process.env.TRANSLATION_OLLAMA_MODEL || process.env.TRANSLATION_OLLAMA_BASE_URL) {
+    if (process.env.TRANSLATION_LLM_MODEL || process.env.TRANSLATION_LLM_BASE_URL) {
       envConfig.llm = {};
-      if (process.env.TRANSLATION_OLLAMA_MODEL) {
-        envConfig.llm.model = process.env.TRANSLATION_OLLAMA_MODEL;
+      if (process.env.TRANSLATION_LLM_MODEL) {
+        envConfig.llm.model = process.env.TRANSLATION_LLM_MODEL;
       }
-      if (process.env.TRANSLATION_OLLAMA_BASE_URL) {
-        envConfig.llm.baseUrl = process.env.TRANSLATION_OLLAMA_BASE_URL;
+      if (process.env.TRANSLATION_LLM_BASE_URL) {
+        envConfig.llm.baseUrl = process.env.TRANSLATION_LLM_BASE_URL;
       }
     }
 

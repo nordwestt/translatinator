@@ -19,8 +19,8 @@ describe('ConfigLoader', () => {
     delete process.env.TRANSLATION_API_KEY;
     delete process.env.TRANSLATINATOR_SOURCE_FILE;
     delete process.env.TRANSLATINATOR_TARGET_LANGUAGES;
-    delete process.env.TRANSLATION_OLLAMA_MODEL;
-    delete process.env.TRANSLATION_OLLAMA_BASE_URL;
+    delete process.env.TRANSLATION_LLM_MODEL;
+    delete process.env.TRANSLATION_LLM_BASE_URL;
   });
 
   describe('loadConfig', () => {
@@ -122,9 +122,9 @@ describe('ConfigLoader', () => {
       }
     });
 
-    it('should load Ollama config from environment variables', async () => {
-      process.env.TRANSLATION_OLLAMA_MODEL = 'translategemma:12b';
-      process.env.TRANSLATION_OLLAMA_BASE_URL = 'http://192.168.1.100:11434';
+    it('should load LLM config from environment variables', async () => {
+      process.env.TRANSLATION_LLM_MODEL = 'translategemma:12b';
+      process.env.TRANSLATION_LLM_BASE_URL = 'http://192.168.1.100:11434';
 
       await fs.ensureDir(testDir);
       const originalCwd = process.cwd();

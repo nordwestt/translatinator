@@ -238,7 +238,7 @@ describe('TranslationService', () => {
     });
   });
 
-  describe('Ollama (OpenAI-compatible API)', () => {
+  describe('LLM (OpenAI-compatible API)', () => {
     let llmTranslator: TranslationService;
     const mockAxios = require('axios');
 
@@ -395,7 +395,7 @@ describe('TranslationService', () => {
       await expect(llmTranslator.translateText('Hello', 'de')).rejects.toThrow('Connection refused');
     });
 
-    it('should use default Ollama config values', async () => {
+    it('should use default LLM config values', async () => {
       const minimalConfig: TranslatinatorConfig = {
         engine: 'llm',
         sourceFile: 'en.json',
@@ -435,7 +435,7 @@ describe('TranslationService', () => {
       );
     });
 
-    it('should translate objects with Ollama engine', async () => {
+    it('should translate objects with LLM engine', async () => {
       const input = { greeting: 'Hello', farewell: 'Goodbye' };
 
       mockAxios.post

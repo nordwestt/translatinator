@@ -327,7 +327,7 @@ describe('Integration Tests', () => {
     });
   });
 
-  describe('Ollama (OpenAI-compatible API)', () => {
+  describe('LLM (OpenAI-compatible API)', () => {
     beforeEach(() => {
       const mockAxios = require('axios');
       mockAxios.post.mockReset();
@@ -338,7 +338,7 @@ describe('Integration Tests', () => {
       });
     });
 
-    it('should complete full translation workflow with Ollama engine and no API key', async () => {
+    it('should complete full translation workflow with LLM engine and no API key', async () => {
       const sourceData = {
         greeting: 'Hello',
         farewell: 'Goodbye'

@@ -1,6 +1,6 @@
 import translate from "translate";
 import axios from 'axios';
-import { TranslatinatorConfig, TranslationCache, TranslationEntry, OllamaConfig } from './types';
+import { TranslatinatorConfig, TranslationCache, TranslationEntry, LLMConfig } from './types';
 import { CacheManager } from './cache';
 import { Logger } from './logger';
 
@@ -54,7 +54,7 @@ export class TranslationService {
     this.setupTranslateEngine();
   }
 
-  private getOllamaConfig(): Required<OllamaConfig> {
+  private getLLMConfig(): Required<LLMConfig> {
     return {
       model: this.config.llm?.model || 'translategemma',
       baseUrl: (this.config.llm?.baseUrl || 'http://localhost:11434').replace(/\/+$/, ''),
@@ -69,7 +69,7 @@ export class TranslationService {
 
   private setupTranslateEngine(): void {
     if (this.config.engine === 'llm') {
-      const oc = this.getOllamaConfig();
+      const oc = this.getLLMConfig();
       this.logger.debug(`OpenAI-compatible engine configured: model=${oc.model}, baseUrl=${oc.baseUrl}`);
       return;
     }
@@ -91,8 +91,8 @@ export class TranslationService {
     this.logger.debug(`Translation engine set to: ${translate.engine}`);
   }
 
-  private async translateWithOllama(text: string, targetLang: string, sourceLang: string = 'en'): Promise<string> {
-    const oc = this.getOllamaConfig();
+  private async translateWithLLM(text: string, targetLang: string, sourceLang: string = 'en'): Promise<string> {
+    const oc = this.getLLMConfig();
     const sourceName = this.getLanguageName(sourceLang);
     const targetName = this.getLanguageName(targetLang);
 
@@ -136,7 +136,7 @@ ${text}`;
       this.logger.debug(`Translating "${text}" from ${sourceLang} to ${targetLang}`);
 
       const translatedText = this.config.engine === 'llm'
-        ? await this.translateWithOllama(text, targetLang, sourceLang)
+        ? await this.translateWithLLM(text, targetLang, sourceLang)
         : await translate(text, { from: sourceLang, to: targetLang });
       
       this.cache.setCachedTranslation(text, targetLang, {

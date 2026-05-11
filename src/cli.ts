@@ -42,7 +42,7 @@ program
       await ConfigLoader.createSampleConfig(options.output);
       console.log(`Sample configuration created at ${options.output}`);
       console.log('');
-      console.log('To use TranslateGemma via Ollama (OpenAI-compatible API):');
+      console.log('To use TranslateGemma via LLM (OpenAI-compatible API):');
       console.log('  {');
       console.log('    "engine": "llm",');
       console.log('    "llm": { "model": "translategemma", "baseUrl": "http://localhost:11434" },');

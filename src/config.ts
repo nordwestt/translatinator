@@ -16,7 +16,7 @@ export class ConfigLoader {
       verbose: false,
       targetLanguages: [],
       excludeKeys: [],
-      ollama: {
+      llm: {
         model: 'translategemma',
         baseUrl: 'http://localhost:11434',
         numCtx: 2048
@@ -51,12 +51,12 @@ export class ConfigLoader {
     }
 
     if (process.env.TRANSLATION_OLLAMA_MODEL || process.env.TRANSLATION_OLLAMA_BASE_URL) {
-      envConfig.ollama = {};
+      envConfig.llm = {};
       if (process.env.TRANSLATION_OLLAMA_MODEL) {
-        envConfig.ollama.model = process.env.TRANSLATION_OLLAMA_MODEL;
+        envConfig.llm.model = process.env.TRANSLATION_OLLAMA_MODEL;
       }
       if (process.env.TRANSLATION_OLLAMA_BASE_URL) {
-        envConfig.ollama.baseUrl = process.env.TRANSLATION_OLLAMA_BASE_URL;
+        envConfig.llm.baseUrl = process.env.TRANSLATION_OLLAMA_BASE_URL;
       }
     }
 

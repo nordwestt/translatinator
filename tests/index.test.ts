@@ -71,13 +71,13 @@ describe('Index API', () => {
       await expect(translate()).rejects.toThrow('API key is required');
     });
 
-    it('should skip API key check for ollama engine', async () => {
+    it('should skip API key check for llm engine', async () => {
       const mockConfig = {
-        engine: 'ollama',
+        engine: 'llm',
         targetLanguages: ['de', 'fr'],
         sourceFile: 'en.json',
         localesDir: './locales',
-        ollama: {
+        llm: {
           model: 'translategemma',
           baseUrl: 'http://localhost:11434'
         }

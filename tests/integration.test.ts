@@ -347,12 +347,12 @@ describe('Integration Tests', () => {
       await fs.writeJson(path.join(localesDir, 'en.json'), sourceData);
 
       const config = {
-        engine: 'ollama',
+        engine: 'llm',
         sourceFile: 'en.json',
         targetLanguages: ['de'],
         localesDir: localesDir,
         cacheDir: path.join(testDir, '.cache'),
-        ollama: {
+        llm: {
           model: 'translategemma',
           baseUrl: 'http://localhost:11434'
         }
@@ -375,12 +375,12 @@ describe('Integration Tests', () => {
       await fs.writeJson(path.join(localesDir, 'en.json'), sourceData);
 
       const config = {
-        engine: 'ollama',
+        engine: 'llm',
         sourceFile: 'en.json',
         targetLanguages: ['de'],
         localesDir: localesDir,
         cacheDir: path.join(testDir, '.cache'),
-        ollama: {
+        llm: {
           model: 'translategemma',
           baseUrl: 'http://localhost:11434'
         }

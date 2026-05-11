@@ -133,9 +133,9 @@ describe('ConfigLoader', () => {
         process.chdir(testDir);
         const config = await ConfigLoader.loadConfig();
 
-        expect(config.ollama).toBeDefined();
-        expect(config.ollama?.model).toBe('translategemma:12b');
-        expect(config.ollama?.baseUrl).toBe('http://192.168.1.100:11434');
+        expect(config.llm).toBeDefined();
+        expect(config.llm?.model).toBe('translategemma:12b');
+        expect(config.llm?.baseUrl).toBe('http://192.168.1.100:11434');
       } finally {
         process.chdir(originalCwd);
       }

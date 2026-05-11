@@ -239,7 +239,7 @@ describe('TranslationService', () => {
   });
 
   describe('Ollama (OpenAI-compatible API)', () => {
-    let ollamaTranslator: TranslationService;
+    let llmTranslator: TranslationService;
     const mockAxios = require('axios');
 
     beforeEach(() => {
@@ -250,30 +250,30 @@ describe('TranslationService', () => {
         }
       });
 
-      const ollamaConfig: TranslatinatorConfig = {
-        engine: 'ollama',
+      const llmConfig: TranslatinatorConfig = {
+        engine: 'llm',
         sourceFile: 'en.json',
         targetLanguages: ['de', 'fr'],
         localesDir: './locales',
-        ollama: {
+        llm: {
           model: 'translategemma',
           baseUrl: 'http://localhost:11434',
           numCtx: 2048
         }
       };
 
-      ollamaTranslator = new TranslationService(ollamaConfig, cacheManager, logger);
+      llmTranslator = new TranslationService(llmConfig, cacheManager, logger);
     });
 
     it('should translate text using OpenAI-compatible API', async () => {
-      const result = await ollamaTranslator.translateText('Hello', 'de');
+      const result = await llmTranslator.translateText('Hello', 'de');
 
       expect(result).toBe('Hallo');
       expect(mockAxios.post).toHaveBeenCalledTimes(1);
     });
 
     it('should call the correct OpenAI-compatible endpoint', async () => {
-      await ollamaTranslator.translateText('Hello', 'de');
+      await llmTranslator.translateText('Hello', 'de');
 
       expect(mockAxios.post).toHaveBeenCalledWith(
         'http://localhost:11434/v1/chat/completions',
@@ -291,7 +291,7 @@ describe('TranslationService', () => {
     });
 
     it('should construct the TranslateGemma prompt with language names and codes', async () => {
-      await ollamaTranslator.translateText('Hello', 'de');
+      await llmTranslator.translateText('Hello', 'de');
 
       const callArgs = mockAxios.post.mock.calls[0];
       const payload = callArgs[1];
@@ -303,7 +303,7 @@ describe('TranslationService', () => {
     });
 
     it('should handle region-specific language codes', async () => {
-      await ollamaTranslator.translateText('Hello', 'de-DE', 'en-US');
+      await llmTranslator.translateText('Hello', 'de-DE', 'en-US');
 
       const callArgs = mockAxios.post.mock.calls[0];
       const prompt = callArgs[1].messages[0].content;
@@ -313,12 +313,12 @@ describe('TranslationService', () => {
 
     it('should include Bearer token when API key is provided', async () => {
       const configWithKey: TranslatinatorConfig = {
-        engine: 'ollama',
+        engine: 'llm',
         apiKey: 'sk-test-key',
         sourceFile: 'en.json',
         targetLanguages: ['de'],
         localesDir: './locales',
-        ollama: {
+        llm: {
           model: 'translategemma',
           baseUrl: 'http://localhost:11434'
         }
@@ -346,7 +346,7 @@ describe('TranslationService', () => {
         version: '1.0.0'
       });
 
-      const result = await ollamaTranslator.translateText('Hello', 'de');
+      const result = await llmTranslator.translateText('Hello', 'de');
 
       expect(result).toBe('Hallo (cached)');
       expect(mockAxios.post).not.toHaveBeenCalled();
@@ -361,12 +361,12 @@ describe('TranslationService', () => {
       });
 
       const forceConfig: TranslatinatorConfig = {
-        engine: 'ollama',
+        engine: 'llm',
         sourceFile: 'en.json',
         targetLanguages: ['de'],
         localesDir: './locales',
         force: true,
-        ollama: {
+        llm: {
           model: 'translategemma',
           baseUrl: 'http://localhost:11434'
         }
@@ -384,7 +384,7 @@ describe('TranslationService', () => {
         data: { choices: [] }
       });
 
-      await expect(ollamaTranslator.translateText('Hello', 'de')).rejects.toThrow(
+      await expect(llmTranslator.translateText('Hello', 'de')).rejects.toThrow(
         'Invalid response from OpenAI-compatible API'
       );
     });
@@ -392,12 +392,12 @@ describe('TranslationService', () => {
     it('should throw error on API failure', async () => {
       mockAxios.post.mockRejectedValue(new Error('Connection refused'));
 
-      await expect(ollamaTranslator.translateText('Hello', 'de')).rejects.toThrow('Connection refused');
+      await expect(llmTranslator.translateText('Hello', 'de')).rejects.toThrow('Connection refused');
     });
 
     it('should use default Ollama config values', async () => {
       const minimalConfig: TranslatinatorConfig = {
-        engine: 'ollama',
+        engine: 'llm',
         sourceFile: 'en.json',
         targetLanguages: ['de'],
         localesDir: './locales'
@@ -415,11 +415,11 @@ describe('TranslationService', () => {
 
     it('should use custom baseUrl and model when configured', async () => {
       const customConfig: TranslatinatorConfig = {
-        engine: 'ollama',
+        engine: 'llm',
         sourceFile: 'en.json',
         targetLanguages: ['de'],
         localesDir: './locales',
-        ollama: {
+        llm: {
           model: 'translategemma:12b',
           baseUrl: 'http://192.168.1.100:8080'
         }
@@ -442,18 +442,18 @@ describe('TranslationService', () => {
         .mockResolvedValueOnce({ data: { choices: [{ message: { content: 'Hallo' } }] } })
         .mockResolvedValueOnce({ data: { choices: [{ message: { content: 'Auf Wiedersehen' } }] } });
 
-      const result = await ollamaTranslator.translateObject(input, 'de');
+      const result = await llmTranslator.translateObject(input, 'de');
 
       expect(result).toEqual({ greeting: 'Hallo', farewell: 'Auf Wiedersehen' });
       expect(mockAxios.post).toHaveBeenCalledTimes(2);
     });
 
-    it('should return usage info with ollama engine', async () => {
-      const result = await ollamaTranslator.getUsage();
+    it('should return usage info with llm engine', async () => {
+      const result = await llmTranslator.getUsage();
 
       expect(result).toEqual({
         character: { count: 0, limit: 'unlimited' },
-        engine: 'ollama'
+        engine: 'llm'
       });
     });
   });

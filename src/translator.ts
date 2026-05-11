@@ -56,9 +56,9 @@ export class TranslationService {
 
   private getOllamaConfig(): Required<OllamaConfig> {
     return {
-      model: this.config.ollama?.model || 'translategemma',
-      baseUrl: (this.config.ollama?.baseUrl || 'http://localhost:11434').replace(/\/+$/, ''),
-      numCtx: this.config.ollama?.numCtx || 2048
+      model: this.config.llm?.model || 'translategemma',
+      baseUrl: (this.config.llm?.baseUrl || 'http://localhost:11434').replace(/\/+$/, ''),
+      numCtx: this.config.llm?.numCtx || 2048
     };
   }
 
@@ -68,7 +68,7 @@ export class TranslationService {
   }
 
   private setupTranslateEngine(): void {
-    if (this.config.engine === 'ollama') {
+    if (this.config.engine === 'llm') {
       const oc = this.getOllamaConfig();
       this.logger.debug(`OpenAI-compatible engine configured: model=${oc.model}, baseUrl=${oc.baseUrl}`);
       return;
@@ -135,7 +135,7 @@ ${text}`;
     try {
       this.logger.debug(`Translating "${text}" from ${sourceLang} to ${targetLang}`);
 
-      const translatedText = this.config.engine === 'ollama'
+      const translatedText = this.config.engine === 'llm'
         ? await this.translateWithOllama(text, targetLang, sourceLang)
         : await translate(text, { from: sourceLang, to: targetLang });
       

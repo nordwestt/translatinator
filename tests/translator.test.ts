@@ -113,6 +113,115 @@ describe('TranslationService', () => {
 
       await expect(translator.translateText('Hello', 'de')).rejects.toThrow('API Error');
     });
+
+    describe('template variable protection', () => {
+      beforeEach(() => {
+        const translate = require('translate');
+        translate.mockClear();
+      });
+
+      it('should preserve a single {variable} in the translated output', async () => {
+        const translate = require('translate');
+        translate.mockImplementation((text: string) => {
+          // Simulate engine preserving the placeholder but translating around it
+          return Promise.resolve(text.replace('There are', 'Es gibt').replace('items', 'Artikel'));
+        });
+
+        const result = await translator.translateText('There are {count} items', 'de');
+
+        expect(result).toBe('Es gibt {count} Artikel');
+        expect(translate).toHaveBeenCalledWith(
+          expect.stringMatching(/\x00TMPL_0\x00/),
+          { from: 'en', to: 'de' }
+        );
+      });
+
+      it('should preserve multiple template variables', async () => {
+        const translate = require('translate');
+        translate.mockImplementation((text: string) => {
+          return Promise.resolve(text.replace('Hello', 'Hallo'));
+        });
+
+        const result = await translator.translateText('Hello {name}, you have {count} messages', 'de');
+
+        expect(result).toBe('Hallo {name}, you have {count} messages');
+      });
+
+      it('should pass text unchanged when no template variables exist', async () => {
+        const translate = require('translate');
+        translate.mockResolvedValue('Hallo');
+
+        const result = await translator.translateText('Hello', 'de');
+
+        expect(result).toBe('Hallo');
+        expect(translate).toHaveBeenCalledWith('Hello', { from: 'en', to: 'de' });
+      });
+
+      it('should restore cached translation with template variables', async () => {
+        const cleanedText = 'There are \x00TMPL_0\x00 items';
+        cacheManager.setCachedTranslation(cleanedText, 'de', {
+          original: cleanedText,
+          translated: 'Es gibt {count} Artikel',
+          timestamp: Date.now(),
+          version: '1.0.0'
+        });
+
+        const translate = require('translate');
+        const result = await translator.translateText('There are {count} items', 'de');
+
+        expect(result).toBe('Es gibt {count} Artikel');
+        expect(translate).not.toHaveBeenCalled();
+      });
+
+      it('should reuse cached translation across different placeholder names', async () => {
+        const cleanedText = 'Hello \x00TMPL_0\x00';
+        cacheManager.setCachedTranslation(cleanedText, 'de', {
+          original: cleanedText,
+          translated: 'Hallo \x00TMPL_0\x00',
+          timestamp: Date.now(),
+          version: '1.0.0'
+        });
+
+        const translate = require('translate');
+        const result = await translator.translateText('Hello {city}', 'de');
+
+        expect(result).toBe('Hallo {city}');
+        expect(translate).not.toHaveBeenCalled();
+      });
+
+      it('should handle template variables at the start, middle, and end of string', async () => {
+        const translate = require('translate');
+        translate.mockImplementation((text: string) => {
+          return Promise.resolve(`translated: ${text}`);
+        });
+
+        const result = await translator.translateText('{name} has {count} items in {city}', 'de');
+
+        expect(result).toBe('translated: {name} has {count} items in {city}');
+      });
+
+      it('should force re-translate with template variables when force enabled', async () => {
+        const cleanedText = 'There are \x00TMPL_0\x00 items';
+        cacheManager.setCachedTranslation(cleanedText, 'de', {
+          original: cleanedText,
+          translated: 'Es gibt {count} Artikel (old)',
+          timestamp: Date.now(),
+          version: '1.0.0'
+        });
+
+        config.force = true;
+        const forcedTranslator = new TranslationService(config, cacheManager, logger);
+
+        const translate = require('translate');
+        translate.mockImplementation((text: string) => {
+          return Promise.resolve(text.replace('There are', 'Es gibt').replace('items', 'Artikel (fresh)'));
+        });
+
+        const result = await forcedTranslator.translateText('There are {count} items', 'de');
+
+        expect(result).toBe('Es gibt {count} Artikel (fresh)');
+      });
+    });
   });
 
   describe('translateObject', () => {
@@ -377,6 +486,78 @@ describe('TranslationService', () => {
 
       expect(result).toBe('Hallo');
       expect(mockAxios.post).toHaveBeenCalled();
+    });
+
+    describe('LLM template variable protection', () => {
+      beforeEach(() => {
+        mockAxios.post.mockReset();
+      });
+
+      it('should preserve a single {variable} in LLM translation', async () => {
+        mockAxios.post.mockResolvedValue({
+          data: {
+            choices: [{ message: { content: 'Es gibt \x00TMPL_0\x00 Artikel' } }]
+          }
+        });
+
+        const result = await llmTranslator.translateText('There are {count} items', 'de');
+
+        expect(result).toBe('Es gibt {count} Artikel');
+      });
+
+      it('should preserve multiple template variables in LLM translation', async () => {
+        mockAxios.post.mockResolvedValue({
+          data: {
+            choices: [{ message: { content: 'Hallo \x00TMPL_0\x00, Sie haben \x00TMPL_1\x00 Nachrichten' } }]
+          }
+        });
+
+        const result = await llmTranslator.translateText('Hello {name}, you have {count} messages', 'de');
+
+        expect(result).toBe('Hallo {name}, Sie haben {count} Nachrichten');
+      });
+
+      it('should pass cleaned text in LLM prompt', async () => {
+        mockAxios.post.mockResolvedValue({
+          data: {
+            choices: [{ message: { content: 'some translation' } }]
+          }
+        });
+
+        await llmTranslator.translateText('Hello {name}', 'de');
+
+        const callArgs = mockAxios.post.mock.calls[0];
+        const prompt = callArgs[1].messages[0].content;
+        expect(prompt).toContain('\x00TMPL_0\x00');
+        expect(prompt).not.toContain('{name}');
+      });
+
+      it('should restore cached LLM translation with template variables', async () => {
+        const cleanedText = 'There are \x00TMPL_0\x00 items';
+        cacheManager.setCachedTranslation(cleanedText, 'de', {
+          original: cleanedText,
+          translated: 'Es gibt {count} Artikel',
+          timestamp: Date.now(),
+          version: '1.0.0'
+        });
+
+        const result = await llmTranslator.translateText('There are {count} items', 'de');
+
+        expect(result).toBe('Es gibt {count} Artikel');
+        expect(mockAxios.post).not.toHaveBeenCalled();
+      });
+
+      it('should handle no template variables in LLM engine (no regression)', async () => {
+        mockAxios.post.mockResolvedValue({
+          data: {
+            choices: [{ message: { content: 'Hallo' } }]
+          }
+        });
+
+        const result = await llmTranslator.translateText('Hello', 'de');
+
+        expect(result).toBe('Hallo');
+      });
     });
 
     it('should throw error when API response is invalid', async () => {

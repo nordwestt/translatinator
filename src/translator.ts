@@ -67,6 +67,25 @@ export class TranslationService {
     return LANGUAGE_NAMES[primary] || primary;
   }
 
+  private extractTemplateVariables(text: string): { cleanedText: string; variables: string[] } {
+    const variables: string[] = [];
+    const cleanedText = text.replace(/\{([^}]*)\}/g, (match) => {
+      const placeholder = `\x00TMPL_${variables.length}\x00`;
+      variables.push(match);
+      return placeholder;
+    });
+    return { cleanedText, variables };
+  }
+
+  private restoreTemplateVariables(text: string, variables: string[]): string {
+    let result = text;
+    for (let i = 0; i < variables.length; i++) {
+      const placeholder = `\x00TMPL_${i}\x00`;
+      result = result.split(placeholder).join(variables[i]);
+    }
+    return result;
+  }
+
   private setupTranslateEngine(): void {
     if (this.config.engine === 'llm') {
       const oc = this.getLLMConfig();
@@ -97,7 +116,7 @@ export class TranslationService {
     const targetName = this.getLanguageName(targetLang);
 
     const prompt = `You are a professional ${sourceName} (${sourceLang}) to ${targetName} (${targetLang}) translator. Your goal is to accurately convey the meaning and nuances of the original ${sourceName} text while adhering to ${targetName} grammar, vocabulary, and cultural sensitivities.
-Produce only the ${targetName} translation, without any additional explanations or commentary. Please translate the following ${sourceName} text into ${targetName}:
+Produce only the ${targetName} translation, without any additional explanations or commentary, and leave all \x00TMPL_X\x00 placeholders intact. Please translate the following ${sourceName} text into ${targetName}:
 
 
 ${text}`;
@@ -126,29 +145,33 @@ ${text}`;
   }
 
   async translateText(text: string, targetLang: string, sourceLang: string = 'en'): Promise<string> {
-    const cached = this.cache.getCachedTranslation(text, targetLang);
+    const { cleanedText, variables } = this.extractTemplateVariables(text);
+
+    const cached = this.cache.getCachedTranslation(cleanedText, targetLang);
     if (cached && !this.config.force) {
-      this.logger.debug(`Using cached translation for "${text}" -> ${targetLang}`);
-      return cached.translated;
+      this.logger.debug(`Using cached translation for "${cleanedText}" -> ${targetLang}`);
+      return this.restoreTemplateVariables(cached.translated, variables);
     }
 
     try {
-      this.logger.debug(`Translating "${text}" from ${sourceLang} to ${targetLang}`);
+      this.logger.debug(`Translating "${cleanedText}" from ${sourceLang} to ${targetLang}`);
 
-      const translatedText = this.config.engine === 'llm'
-        ? await this.translateWithLLM(text, targetLang, sourceLang)
-        : await translate(text, { from: sourceLang, to: targetLang });
+      const rawTranslated = this.config.engine === 'llm'
+        ? await this.translateWithLLM(cleanedText, targetLang, sourceLang)
+        : await translate(cleanedText, { from: sourceLang, to: targetLang });
       
-      this.cache.setCachedTranslation(text, targetLang, {
-        original: text,
-        translated: translatedText,
+      const translatedText = this.restoreTemplateVariables(rawTranslated, variables);
+
+      this.cache.setCachedTranslation(cleanedText, targetLang, {
+        original: cleanedText,
+        translated: rawTranslated,
         timestamp: Date.now(),
         version: '1.0.0'
       });
 
       return translatedText;
     } catch (error) {
-      this.logger.error(`Failed to translate "${text}" to ${targetLang}:`, error);
+      this.logger.error(`Failed to translate "${cleanedText}" to ${targetLang}:`, error);
       throw error;
     }
   }

@@ -164,7 +164,7 @@ ${text}`;
 
       this.cache.setCachedTranslation(cleanedText, targetLang, {
         original: cleanedText,
-        translated: translatedText,
+        translated: rawTranslated,
         timestamp: Date.now(),
         version: '1.0.0'
       });

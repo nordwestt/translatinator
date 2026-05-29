@@ -173,6 +173,22 @@ describe('TranslationService', () => {
         expect(translate).not.toHaveBeenCalled();
       });
 
+      it('should reuse cached translation across different placeholder names', async () => {
+        const cleanedText = 'Hello \x00TMPL_0\x00';
+        cacheManager.setCachedTranslation(cleanedText, 'de', {
+          original: cleanedText,
+          translated: 'Hallo \x00TMPL_0\x00',
+          timestamp: Date.now(),
+          version: '1.0.0'
+        });
+
+        const translate = require('translate');
+        const result = await translator.translateText('Hello {city}', 'de');
+
+        expect(result).toBe('Hallo {city}');
+        expect(translate).not.toHaveBeenCalled();
+      });
+
       it('should handle template variables at the start, middle, and end of string', async () => {
         const translate = require('translate');
         translate.mockImplementation((text: string) => {

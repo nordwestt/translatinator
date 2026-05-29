@@ -1,6 +1,6 @@
 import translate from "translate";
 import axios from 'axios';
-import { TranslatinatorConfig, TranslationCache, TranslationEntry, LLMConfig } from './types';
+import { TranslatinatorConfig, TranslationEntry, LLMConfig, TranslationContext } from './types';
 import { CacheManager } from './cache';
 import { Logger } from './logger';
 
@@ -58,8 +58,53 @@ export class TranslationService {
     return {
       model: this.config.llm?.model || 'translategemma',
       baseUrl: (this.config.llm?.baseUrl || 'http://localhost:11434').replace(/\/+$/, ''),
-      numCtx: this.config.llm?.numCtx || 2048
+      numCtx: this.config.llm?.numCtx || 2048,
+      maxSiblingContext: this.config.llm?.maxSiblingContext ?? 3
     };
+  }
+
+  private getCacheKey(text: string, context?: TranslationContext): string {
+    if (this.config.engine === 'llm' && context?.keyPath?.length) {
+      return `${context.keyPath.join('.')}:${text}`;
+    }
+    return text;
+  }
+
+  private collectSiblingStrings(
+    parent: Record<string, unknown>,
+    currentKey: string,
+    max: number
+  ): Array<{ key: string; value: string }> {
+    const siblings: Array<{ key: string; value: string }> = [];
+    for (const [key, value] of Object.entries(parent)) {
+      if (key === currentKey) continue;
+      if (typeof value !== 'string') continue;
+      if (this.shouldExcludeKey(key)) continue;
+      siblings.push({ key, value });
+      if (siblings.length >= max) break;
+    }
+    return siblings;
+  }
+
+  private buildContextSection(context?: TranslationContext): string {
+    if (!context?.keyPath?.length) return '';
+
+    let section = `This string comes from a software UI translation file (JSON i18n).
+
+Key path: ${context.keyPath.join('.')}`;
+
+    if (context.siblings && context.siblings.length > 0) {
+      section += '\nRelated strings in the same section:';
+      for (const sibling of context.siblings) {
+        section += `\n- ${sibling.key}: "${sibling.value}"`;
+      }
+    }
+
+    section += `\n\nThe key path and related strings indicate the intended meaning. Translate the string below accordingly. Do not translate it as unrelated senses (e.g. food) when the context indicates a technical or product label.
+
+Translate ONLY the following string:`;
+
+    return section;
   }
 
   private getLanguageName(code: string): string {
@@ -110,13 +155,28 @@ export class TranslationService {
     this.logger.debug(`Translation engine set to: ${translate.engine}`);
   }
 
-  private async translateWithLLM(text: string, targetLang: string, sourceLang: string = 'en'): Promise<string> {
+  private async translateWithLLM(
+    text: string,
+    targetLang: string,
+    sourceLang: string = 'en',
+    context?: TranslationContext
+  ): Promise<string> {
     const oc = this.getLLMConfig();
     const sourceName = this.getLanguageName(sourceLang);
     const targetName = this.getLanguageName(targetLang);
+    const contextSection = this.buildContextSection(context);
 
-    const prompt = `You are a professional ${sourceName} (${sourceLang}) to ${targetName} (${targetLang}) translator. Your goal is to accurately convey the meaning and nuances of the original ${sourceName} text while adhering to ${targetName} grammar, vocabulary, and cultural sensitivities.
-Produce only the ${targetName} translation, without any additional explanations or commentary, and leave all \x00TMPL_X\x00 placeholders intact. Please translate the following ${sourceName} text into ${targetName}:
+    const baseInstructions = `You are a professional ${sourceName} (${sourceLang}) to ${targetName} (${targetLang}) translator. Your goal is to accurately convey the meaning and nuances of the original ${sourceName} text while adhering to ${targetName} grammar, vocabulary, and cultural sensitivities.
+Produce only the ${targetName} translation, without any additional explanations or commentary, and leave all \x00TMPL_X\x00 placeholders intact. Please translate the following ${sourceName} text into ${targetName}:`;
+
+    const prompt = contextSection
+      ? `${baseInstructions}
+
+${contextSection}
+
+
+${text}`
+      : `${baseInstructions}
 
 
 ${text}`;
@@ -131,7 +191,8 @@ ${text}`;
       {
         model: oc.model,
         messages: [{ role: 'user', content: prompt }],
-        stream: false
+        stream: false,
+        options: { num_ctx: oc.numCtx }
       },
       { headers }
     );
@@ -144,10 +205,16 @@ ${text}`;
     return content.trim();
   }
 
-  async translateText(text: string, targetLang: string, sourceLang: string = 'en'): Promise<string> {
+  async translateText(
+    text: string,
+    targetLang: string,
+    sourceLang: string = 'en',
+    context?: TranslationContext
+  ): Promise<string> {
     const { cleanedText, variables } = this.extractTemplateVariables(text);
+    const cacheKey = this.getCacheKey(cleanedText, context);
 
-    const cached = this.cache.getCachedTranslation(cleanedText, targetLang);
+    const cached = this.cache.getCachedTranslation(cacheKey, targetLang);
     if (cached && !this.config.force) {
       this.logger.debug(`Using cached translation for "${cleanedText}" -> ${targetLang}`);
       return this.restoreTemplateVariables(cached.translated, variables);
@@ -157,12 +224,12 @@ ${text}`;
       this.logger.debug(`Translating "${cleanedText}" from ${sourceLang} to ${targetLang}`);
 
       const rawTranslated = this.config.engine === 'llm'
-        ? await this.translateWithLLM(cleanedText, targetLang, sourceLang)
+        ? await this.translateWithLLM(cleanedText, targetLang, sourceLang, context)
         : await translate(cleanedText, { from: sourceLang, to: targetLang });
       
       const translatedText = this.restoreTemplateVariables(rawTranslated, variables);
 
-      this.cache.setCachedTranslation(cleanedText, targetLang, {
+      this.cache.setCachedTranslation(cacheKey, targetLang, {
         original: cleanedText,
         translated: rawTranslated,
         timestamp: Date.now(),
@@ -176,29 +243,46 @@ ${text}`;
     }
   }
 
-  async translateObject(obj: any, targetLang: string, sourceLang: string = 'en'): Promise<any> {
+  async translateObject(
+    obj: any,
+    targetLang: string,
+    sourceLang: string = 'en',
+    keyPath: string[] = []
+  ): Promise<any> {
     if (typeof obj === 'string') {
-      return await this.translateText(obj, targetLang, sourceLang);
+      const context = keyPath.length > 0 ? { keyPath } : undefined;
+      return await this.translateText(obj, targetLang, sourceLang, context);
     }
 
     if (Array.isArray(obj)) {
       const results = [];
-      for (const item of obj) {
-        results.push(await this.translateObject(item, targetLang, sourceLang));
+      for (let i = 0; i < obj.length; i++) {
+        results.push(await this.translateObject(obj[i], targetLang, sourceLang, [...keyPath, String(i)]));
       }
       return results;
     }
 
     if (typeof obj === 'object' && obj !== null) {
       const result: any = {};
+      const maxSiblings = this.getLLMConfig().maxSiblingContext;
+
       for (const [key, value] of Object.entries(obj)) {
-        // Check if this key should be excluded
         if (this.shouldExcludeKey(key)) {
           result[key] = value;
           continue;
         }
 
-        result[key] = await this.translateObject(value, targetLang, sourceLang);
+        const currentPath = [...keyPath, key];
+
+        if (typeof value === 'string') {
+          const context: TranslationContext = {
+            keyPath: currentPath,
+            siblings: this.collectSiblingStrings(obj as Record<string, unknown>, key, maxSiblings)
+          };
+          result[key] = await this.translateText(value, targetLang, sourceLang, context);
+        } else {
+          result[key] = await this.translateObject(value, targetLang, sourceLang, currentPath);
+        }
       }
       return result;
     }

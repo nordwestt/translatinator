@@ -200,6 +200,8 @@ Features:
 - 🎯 Context-aware translations
 - 🌐 Same CLI/API interface as other engines
 
+When translating JSON objects, the LLM engine automatically includes each string's key path (e.g. `server.deployment.starter`) and up to 3 sibling strings from the same section. This helps disambiguate short labels like "Starter" that could otherwise be translated incorrectly without surrounding context.
+
 ### **Utilities**
 ```bash
 npx translatinator clear-cache [-c, --config <path>]

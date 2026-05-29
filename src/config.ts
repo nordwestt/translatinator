@@ -19,7 +19,8 @@ export class ConfigLoader {
       llm: {
         model: 'translategemma',
         baseUrl: 'http://localhost:11434',
-        numCtx: 2048
+        numCtx: 2048,
+        maxSiblingContext: 3
       }
     };
 

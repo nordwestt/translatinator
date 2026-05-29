@@ -51,6 +51,13 @@ export interface LLMConfig {
   baseUrl?: string;
   /** Optional context window size */
   numCtx?: number;
+  /** Max sibling strings to include in LLM context (default: 3) */
+  maxSiblingContext?: number;
+}
+
+export interface TranslationContext {
+  keyPath: string[];
+  siblings?: Array<{ key: string; value: string }>;
 }
 
 export interface TranslationEntry {

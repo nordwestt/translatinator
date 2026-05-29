@@ -637,5 +637,101 @@ describe('TranslationService', () => {
         engine: 'llm'
       });
     });
+
+    describe('LLM context-aware translation', () => {
+      beforeEach(() => {
+        mockAxios.post.mockReset();
+        mockAxios.post.mockResolvedValue({
+          data: {
+            choices: [{ message: { content: 'Tradotto' } }]
+          }
+        });
+      });
+
+      it('should include key path and sibling strings when translating nested objects', async () => {
+        const input = {
+          server: {
+            deployment: {
+              starter: 'Starter',
+              pro: 'Pro',
+              enterprise: 'Enterprise'
+            }
+          }
+        };
+
+        await llmTranslator.translateObject(input, 'it');
+
+        const prompt = mockAxios.post.mock.calls[0][1].messages[0].content;
+        expect(prompt).toContain('Key path: server.deployment.starter');
+        expect(prompt).toContain('- pro: "Pro"');
+        expect(prompt).toContain('- enterprise: "Enterprise"');
+        expect(prompt).toContain('Starter');
+      });
+
+      it('should cap sibling context at maxSiblingContext (default 3)', async () => {
+        const input = {
+          section: {
+            a: 'A',
+            b: 'B',
+            c: 'C',
+            d: 'D',
+            e: 'E',
+            target: 'Target'
+          }
+        };
+
+        await llmTranslator.translateObject(input, 'de');
+
+        const prompt = mockAxios.post.mock.calls.find(
+          (call: any[]) => call[1].messages[0].content.includes('Key path: section.target')
+        )?.[1].messages[0].content;
+
+        expect(prompt).toBeDefined();
+        const siblingLines = prompt.match(/^- \w+: "/gm) || [];
+        expect(siblingLines.length).toBeLessThanOrEqual(3);
+        expect(prompt).not.toContain('- target: "Target"');
+      });
+
+      it('should not include context section for direct translateText calls', async () => {
+        await llmTranslator.translateText('Hello', 'de');
+
+        const prompt = mockAxios.post.mock.calls[0][1].messages[0].content;
+        expect(prompt).not.toContain('Key path:');
+        expect(prompt).not.toContain('software UI translation file');
+      });
+
+      it('should use path-scoped cache keys for the same text at different paths', async () => {
+        mockAxios.post
+          .mockResolvedValueOnce({ data: { choices: [{ message: { content: 'Antipasto' } }] } })
+          .mockResolvedValueOnce({ data: { choices: [{ message: { content: 'Base' } }] } });
+
+        await llmTranslator.translateObject({ menu: { starter: 'Starter' } }, 'it');
+        await llmTranslator.translateObject({ server: { deployment: { starter: 'Starter' } } }, 'it');
+
+        expect(mockAxios.post).toHaveBeenCalledTimes(2);
+        expect(cacheManager.getCachedTranslation('menu.starter:Starter', 'it')).not.toBeNull();
+        expect(cacheManager.getCachedTranslation('server.deployment.starter:Starter', 'it')).not.toBeNull();
+      });
+
+      it('should pass numCtx in the API payload options', async () => {
+        await llmTranslator.translateText('Hello', 'de');
+
+        const payload = mockAxios.post.mock.calls[0][1];
+        expect(payload.options).toEqual({ num_ctx: 2048 });
+      });
+    });
+  });
+
+  describe('translateObject context (non-LLM)', () => {
+    it('should use text-only cache keys for conventional engines', async () => {
+      const translate = require('translate');
+      translate.mockResolvedValue('Hallo');
+
+      const input = { server: { label: 'Hello' } };
+      await translator.translateObject(input, 'de');
+
+      expect(cacheManager.getCachedTranslation('Hello', 'de')).not.toBeNull();
+      expect(cacheManager.getCachedTranslation('server.label:Hello', 'de')).toBeNull();
+    });
   });
 });

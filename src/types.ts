@@ -49,7 +49,7 @@ export interface LLMConfig {
   model?: string;
   /** Base URL for the OpenAI-compatible API (default: 'http://localhost:11434') */
   baseUrl?: string;
-  /** Optional context window size */
+  /** Context window size for Ollama-compatible APIs (omit to skip sending options.num_ctx) */
   numCtx?: number;
   /** Max sibling strings to include in LLM context (default: 3) */
   maxSiblingContext?: number;

@@ -21,6 +21,8 @@ describe('ConfigLoader', () => {
     delete process.env.TRANSLATINATOR_TARGET_LANGUAGES;
     delete process.env.TRANSLATION_LLM_MODEL;
     delete process.env.TRANSLATION_LLM_BASE_URL;
+    delete process.env.TRANSLATION_LLM_NUM_CTX;
+    delete process.env.TRANSLATION_LLM_MAX_SIBLING_CONTEXT;
   });
 
   describe('loadConfig', () => {
@@ -57,6 +59,9 @@ describe('ConfigLoader', () => {
       expect(config.verbose).toBe(false);
       expect(config.targetLanguages).toEqual([]);
       expect(config.excludeKeys).toEqual([]);
+      expect(config.llm?.model).toBe('translategemma');
+      expect(config.llm?.maxSiblingContext).toBe(3);
+      expect(config.llm?.numCtx).toBeUndefined();
     });
 
     it('should load config from environment variables', async () => {
@@ -136,9 +141,51 @@ describe('ConfigLoader', () => {
         expect(config.llm).toBeDefined();
         expect(config.llm?.model).toBe('translategemma:12b');
         expect(config.llm?.baseUrl).toBe('http://192.168.1.100:11434');
+        expect(config.llm?.maxSiblingContext).toBe(3);
       } finally {
         process.chdir(originalCwd);
       }
+    });
+
+    it('should deep-merge partial llm config from file with defaults', async () => {
+      await fs.ensureDir(testDir);
+      const configPath = path.join(testDir, 'partial-llm.config.json');
+      await fs.writeJson(configPath, {
+        engine: 'llm',
+        llm: { model: 'custom-model' }
+      });
+
+      const config = await ConfigLoader.loadConfig(configPath);
+      expect(config.llm?.model).toBe('custom-model');
+      expect(config.llm?.baseUrl).toBe('http://localhost:11434');
+      expect(config.llm?.maxSiblingContext).toBe(3);
+    });
+
+    it('should load maxSiblingContext from environment variable', async () => {
+      process.env.TRANSLATION_LLM_MAX_SIBLING_CONTEXT = '5';
+
+      await fs.ensureDir(testDir);
+      const originalCwd = process.cwd();
+
+      try {
+        process.chdir(testDir);
+        const config = await ConfigLoader.loadConfig();
+        expect(config.llm?.maxSiblingContext).toBe(5);
+      } finally {
+        process.chdir(originalCwd);
+      }
+    });
+  });
+
+  describe('mergeConfigs', () => {
+    it('should deep-merge llm objects', () => {
+      const merged = ConfigLoader.mergeConfigs(
+        { llm: { model: 'a', baseUrl: 'http://localhost:11434', maxSiblingContext: 3 } },
+        { llm: { model: 'b' } }
+      );
+      expect(merged.llm?.model).toBe('b');
+      expect(merged.llm?.baseUrl).toBe('http://localhost:11434');
+      expect(merged.llm?.maxSiblingContext).toBe(3);
     });
   });
 

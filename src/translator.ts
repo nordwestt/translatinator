@@ -1,6 +1,6 @@
 import translate from "translate";
 import axios from 'axios';
-import { TranslatinatorConfig, TranslationEntry, LLMConfig, TranslationContext } from './types';
+import { TranslatinatorConfig, TranslationEntry, TranslationContext } from './types';
 import { CacheManager } from './cache';
 import { Logger } from './logger';
 
@@ -54,13 +54,31 @@ export class TranslationService {
     this.setupTranslateEngine();
   }
 
-  private getLLMConfig(): Required<LLMConfig> {
+  private isLLMEngine(): boolean {
+    return this.config.engine === 'llm';
+  }
+
+  private getLLMConfig(): { model: string; baseUrl: string; maxSiblingContext: number } {
     return {
       model: this.config.llm?.model || 'translategemma',
       baseUrl: (this.config.llm?.baseUrl || 'http://localhost:11434').replace(/\/+$/, ''),
-      numCtx: this.config.llm?.numCtx || 2048,
       maxSiblingContext: this.config.llm?.maxSiblingContext ?? 3
     };
+  }
+
+  private siblingKeyScore(currentKey: string, candidateKey: string): number {
+    const a = currentKey.toLowerCase();
+    const b = candidateKey.toLowerCase();
+    let prefixLen = 0;
+    const minLen = Math.min(a.length, b.length);
+    while (prefixLen < minLen && a[prefixLen] === b[prefixLen]) {
+      prefixLen++;
+    }
+    return prefixLen;
+  }
+
+  private formatPromptValue(value: string): string {
+    return JSON.stringify(value);
   }
 
   private getCacheKey(text: string, context?: TranslationContext): string {
@@ -75,15 +93,47 @@ export class TranslationService {
     currentKey: string,
     max: number
   ): Array<{ key: string; value: string }> {
-    const siblings: Array<{ key: string; value: string }> = [];
+    if (max <= 0) return [];
+
+    const candidates: Array<{ key: string; value: string; score: number }> = [];
     for (const [key, value] of Object.entries(parent)) {
       if (key === currentKey) continue;
       if (typeof value !== 'string') continue;
       if (this.shouldExcludeKey(key)) continue;
-      siblings.push({ key, value });
-      if (siblings.length >= max) break;
+      candidates.push({
+        key,
+        value,
+        score: this.siblingKeyScore(currentKey, key)
+      });
     }
-    return siblings;
+
+    candidates.sort((a, b) => b.score - a.score || a.key.localeCompare(b.key));
+    return candidates.slice(0, max).map(({ key, value }) => ({ key, value }));
+  }
+
+  private collectArraySiblingStrings(
+    arr: unknown[],
+    currentIndex: number,
+    max: number
+  ): Array<{ key: string; value: string }> {
+    if (max <= 0) return [];
+
+    const neighbors: Array<{ index: number; distance: number; value: string }> = [];
+    for (let i = 0; i < arr.length; i++) {
+      if (i === currentIndex) continue;
+      if (typeof arr[i] !== 'string') continue;
+      neighbors.push({
+        index: i,
+        distance: Math.abs(i - currentIndex),
+        value: arr[i] as string
+      });
+    }
+
+    neighbors.sort((a, b) => a.distance - b.distance || a.index - b.index);
+    return neighbors.slice(0, max).map((n) => ({
+      key: String(n.index),
+      value: n.value
+    }));
   }
 
   private buildContextSection(context?: TranslationContext): string {
@@ -96,7 +146,7 @@ Key path: ${context.keyPath.join('.')}`;
     if (context.siblings && context.siblings.length > 0) {
       section += '\nRelated strings in the same section:';
       for (const sibling of context.siblings) {
-        section += `\n- ${sibling.key}: "${sibling.value}"`;
+        section += `\n- ${sibling.key}: ${this.formatPromptValue(sibling.value)}`;
       }
     }
 
@@ -120,6 +170,20 @@ Translate ONLY the following string:`;
       return placeholder;
     });
     return { cleanedText, variables };
+  }
+
+  private warnIfTemplatePlaceholdersAltered(translated: string, originalCleaned: string): void {
+    const placeholderMatches = originalCleaned.match(/\x00TMPL_\d+\x00/g);
+    if (!placeholderMatches) return;
+
+    for (const placeholder of placeholderMatches) {
+      if (!translated.includes(placeholder)) {
+        this.logger.warn(
+          `LLM response may have altered template placeholder ${placeholder}; output may be incorrect`
+        );
+        return;
+      }
+    }
   }
 
   private restoreTemplateVariables(text: string, variables: string[]): string {
@@ -186,14 +250,18 @@ ${text}`;
       headers['Authorization'] = `Bearer ${this.config.apiKey}`;
     }
 
+    const body: Record<string, unknown> = {
+      model: oc.model,
+      messages: [{ role: 'user', content: prompt }],
+      stream: false
+    };
+    if (this.config.llm?.numCtx !== undefined) {
+      body.options = { num_ctx: this.config.llm.numCtx };
+    }
+
     const response = await axios.post(
       `${oc.baseUrl}/v1/chat/completions`,
-      {
-        model: oc.model,
-        messages: [{ role: 'user', content: prompt }],
-        stream: false,
-        options: { num_ctx: oc.numCtx }
-      },
+      body,
       { headers }
     );
 
@@ -202,7 +270,9 @@ ${text}`;
       throw new Error('Invalid response from OpenAI-compatible API: missing choices[0].message.content');
     }
 
-    return content.trim();
+    const trimmed = content.trim();
+    this.warnIfTemplatePlaceholdersAltered(trimmed, text);
+    return trimmed;
   }
 
   async translateText(
@@ -256,15 +326,27 @@ ${text}`;
 
     if (Array.isArray(obj)) {
       const results = [];
+      const maxSiblings = this.isLLMEngine() ? this.getLLMConfig().maxSiblingContext : 0;
+
       for (let i = 0; i < obj.length; i++) {
-        results.push(await this.translateObject(obj[i], targetLang, sourceLang, [...keyPath, String(i)]));
+        const currentPath = [...keyPath, String(i)];
+
+        if (typeof obj[i] === 'string' && this.isLLMEngine()) {
+          const context: TranslationContext = {
+            keyPath: currentPath,
+            siblings: this.collectArraySiblingStrings(obj, i, maxSiblings)
+          };
+          results.push(await this.translateText(obj[i] as string, targetLang, sourceLang, context));
+        } else {
+          results.push(await this.translateObject(obj[i], targetLang, sourceLang, currentPath));
+        }
       }
       return results;
     }
 
     if (typeof obj === 'object' && obj !== null) {
       const result: any = {};
-      const maxSiblings = this.getLLMConfig().maxSiblingContext;
+      const maxSiblings = this.isLLMEngine() ? this.getLLMConfig().maxSiblingContext : 0;
 
       for (const [key, value] of Object.entries(obj)) {
         if (this.shouldExcludeKey(key)) {
@@ -275,10 +357,14 @@ ${text}`;
         const currentPath = [...keyPath, key];
 
         if (typeof value === 'string') {
-          const context: TranslationContext = {
-            keyPath: currentPath,
-            siblings: this.collectSiblingStrings(obj as Record<string, unknown>, key, maxSiblings)
-          };
+          const context: TranslationContext = { keyPath: currentPath };
+          if (maxSiblings > 0) {
+            context.siblings = this.collectSiblingStrings(
+              obj as Record<string, unknown>,
+              key,
+              maxSiblings
+            );
+          }
           result[key] = await this.translateText(value, targetLang, sourceLang, context);
         } else {
           result[key] = await this.translateObject(value, targetLang, sourceLang, currentPath);

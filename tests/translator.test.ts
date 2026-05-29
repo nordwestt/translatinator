@@ -367,7 +367,8 @@ describe('TranslationService', () => {
         llm: {
           model: 'translategemma',
           baseUrl: 'http://localhost:11434',
-          numCtx: 2048
+          numCtx: 2048,
+          maxSiblingContext: 3
         }
       };
 
@@ -713,11 +714,117 @@ describe('TranslationService', () => {
         expect(cacheManager.getCachedTranslation('server.deployment.starter:Starter', 'it')).not.toBeNull();
       });
 
-      it('should pass numCtx in the API payload options', async () => {
+      it('should pass numCtx in the API payload options when configured', async () => {
         await llmTranslator.translateText('Hello', 'de');
 
         const payload = mockAxios.post.mock.calls[0][1];
         expect(payload.options).toEqual({ num_ctx: 2048 });
+      });
+
+      it('should omit options.num_ctx when numCtx is not configured', async () => {
+        const noCtxConfig: TranslatinatorConfig = {
+          engine: 'llm',
+          sourceFile: 'en.json',
+          targetLanguages: ['de'],
+          localesDir: './locales',
+          llm: {
+            model: 'translategemma',
+            baseUrl: 'http://localhost:11434'
+          }
+        };
+        const noCtxTranslator = new TranslationService(noCtxConfig, cacheManager, logger);
+        await noCtxTranslator.translateText('Hello', 'de');
+
+        const payload = mockAxios.post.mock.calls[mockAxios.post.mock.calls.length - 1][1];
+        expect(payload.options).toBeUndefined();
+      });
+
+      it('should JSON-escape sibling values with quotes in the prompt', async () => {
+        const input = {
+          section: {
+            label: 'Say "hello"',
+            target: 'Target'
+          }
+        };
+
+        await llmTranslator.translateObject(input, 'de');
+
+        const prompt = mockAxios.post.mock.calls.find(
+          (call: any[]) => call[1].messages[0].content.includes('Key path: section.target')
+        )?.[1].messages[0].content;
+
+        expect(prompt).toContain('- label: "Say \\"hello\\""');
+      });
+
+      it('should not include sibling context when maxSiblingContext is 0', async () => {
+        const noSiblingsConfig: TranslatinatorConfig = {
+          engine: 'llm',
+          sourceFile: 'en.json',
+          targetLanguages: ['de'],
+          localesDir: './locales',
+          llm: {
+            model: 'translategemma',
+            baseUrl: 'http://localhost:11434',
+            maxSiblingContext: 0
+          }
+        };
+        const noSiblingsTranslator = new TranslationService(
+          noSiblingsConfig,
+          cacheManager,
+          logger
+        );
+
+        await noSiblingsTranslator.translateObject(
+          { section: { a: 'A', target: 'Target' } },
+          'de'
+        );
+
+        const prompt = mockAxios.post.mock.calls.find((call: any[]) =>
+          /Key path: section\.target(\s|$)/.test(call[1].messages[0].content)
+        )?.[1].messages[0].content;
+
+        expect(prompt).toBeDefined();
+        expect(prompt).not.toContain('Related strings in the same section');
+      });
+
+      it('should include adjacent array strings as sibling context', async () => {
+        const input = {
+          items: ['First', 'Second', 'Third']
+        };
+
+        await llmTranslator.translateObject(input, 'de');
+
+        const prompt = mockAxios.post.mock.calls.find(
+          (call: any[]) => call[1].messages[0].content.includes('Key path: items.1')
+        )?.[1].messages[0].content;
+
+        expect(prompt).toBeDefined();
+        expect(prompt).toContain('- 0: "First"');
+        expect(prompt).toContain('- 2: "Third"');
+      });
+
+      it('should prefer siblings with similar key prefixes', async () => {
+        const input = {
+          section: {
+            starterLabel: 'Starter label',
+            starterHint: 'Starter hint',
+            alpha: 'Alpha',
+            beta: 'Beta',
+            gamma: 'Gamma',
+            starter: 'Starter'
+          }
+        };
+
+        await llmTranslator.translateObject(input, 'de');
+
+        const prompt = mockAxios.post.mock.calls.find((call: any[]) =>
+          /Key path: section\.starter(\s|$)/.test(call[1].messages[0].content)
+        )?.[1].messages[0].content;
+
+        expect(prompt).toBeDefined();
+        expect(prompt).toContain('- starterLabel:');
+        expect(prompt).toContain('- starterHint:');
+        expect(prompt).not.toContain('- gamma:');
       });
     });
   });

@@ -3,6 +3,18 @@ import * as path from 'path';
 import { TranslatinatorConfig } from './types';
 
 export class ConfigLoader {
+  static mergeConfigs(...parts: Partial<TranslatinatorConfig>[]): TranslatinatorConfig {
+    let result: Partial<TranslatinatorConfig> = {};
+    for (const part of parts) {
+      const { llm, ...rest } = part;
+      result = { ...result, ...rest };
+      if (llm) {
+        result.llm = { ...(result.llm || {}), ...llm };
+      }
+    }
+    return result as TranslatinatorConfig;
+  }
+
   static async loadConfig(configPath?: string): Promise<TranslatinatorConfig> {
     const defaultConfig: Partial<TranslatinatorConfig> = {
       engine: 'google',
@@ -19,7 +31,6 @@ export class ConfigLoader {
       llm: {
         model: 'translategemma',
         baseUrl: 'http://localhost:11434',
-        numCtx: 2048,
         maxSiblingContext: 3
       }
     };
@@ -51,13 +62,27 @@ export class ConfigLoader {
       envConfig.targetLanguages = process.env.TRANSLATINATOR_TARGET_LANGUAGES.split(',');
     }
 
-    if (process.env.TRANSLATION_LLM_MODEL || process.env.TRANSLATION_LLM_BASE_URL) {
+    if (
+      process.env.TRANSLATION_LLM_MODEL ||
+      process.env.TRANSLATION_LLM_BASE_URL ||
+      process.env.TRANSLATION_LLM_NUM_CTX ||
+      process.env.TRANSLATION_LLM_MAX_SIBLING_CONTEXT
+    ) {
       envConfig.llm = {};
       if (process.env.TRANSLATION_LLM_MODEL) {
         envConfig.llm.model = process.env.TRANSLATION_LLM_MODEL;
       }
       if (process.env.TRANSLATION_LLM_BASE_URL) {
         envConfig.llm.baseUrl = process.env.TRANSLATION_LLM_BASE_URL;
+      }
+      if (process.env.TRANSLATION_LLM_NUM_CTX) {
+        envConfig.llm.numCtx = parseInt(process.env.TRANSLATION_LLM_NUM_CTX, 10);
+      }
+      if (process.env.TRANSLATION_LLM_MAX_SIBLING_CONTEXT) {
+        envConfig.llm.maxSiblingContext = parseInt(
+          process.env.TRANSLATION_LLM_MAX_SIBLING_CONTEXT,
+          10
+        );
       }
     }
 
@@ -76,12 +101,10 @@ export class ConfigLoader {
           userConfig = await fs.readJson(configPath);
         }
 
-        // Config file takes precedence over environment variables
-        return { ...defaultConfig, ...envConfig, ...userConfig } as TranslatinatorConfig;
+        return ConfigLoader.mergeConfigs(defaultConfig, envConfig, userConfig);
       }
-      
-      // If specific path was provided but doesn't exist, just use defaults + env vars
-      return { ...defaultConfig, ...envConfig } as TranslatinatorConfig;
+
+      return ConfigLoader.mergeConfigs(defaultConfig, envConfig);
     }
 
     // No specific path provided, search for config files in current directory
@@ -106,13 +129,11 @@ export class ConfigLoader {
           userConfig = await fs.readJson(configFile);
         }
 
-        // Config file takes precedence over environment variables
-        return { ...defaultConfig, ...envConfig, ...userConfig } as TranslatinatorConfig;
+        return ConfigLoader.mergeConfigs(defaultConfig, envConfig, userConfig);
       }
     }
 
-    // No config file found, use defaults + environment variables
-    return { ...defaultConfig, ...envConfig } as TranslatinatorConfig;
+    return ConfigLoader.mergeConfigs(defaultConfig, envConfig);
   }
 
   static async createSampleConfig(outputPath: string = 'translatinator.config.json'): Promise<void> {

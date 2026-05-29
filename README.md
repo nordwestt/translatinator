@@ -101,7 +101,12 @@ npx translatinator translate
 |---------------|----------|-------------|-------------------------|
 | `engine` | `string` | `"google"` | Translation engine: 'google', 'deepl', 'yandex', 'libre', or 'llm' |
 | `apiKey` | `string` | **⚠️ REQUIRED** | API key for the chosen engine |
-| `endpointUrl` | `string` | `undefined` | Custom endpoint for LibreTranslate/self-hosted or llm |
+| `endpointUrl` | `string` | `undefined` | Custom endpoint for LibreTranslate/self-hosted engines |
+| `llm` | `object` | see below | OpenAI-compatible LLM settings (when `engine` is `llm`) |
+| `llm.model` | `string` | `"translategemma"` | Model name |
+| `llm.baseUrl` | `string` | `"http://localhost:11434"` | API base URL (Ollama, vLLM, etc.) |
+| `llm.numCtx` | `number` | omitted | Ollama context window (`options.num_ctx`); omit for strict OpenAI APIs |
+| `llm.maxSiblingContext` | `number` | `3` | Max sibling strings in LLM prompt; set `0` to disable |
 | `sourceFile` | `string` | `"en.json"` | Source language file |
 | `targetLanguages` | `string[]` | `[]` | Target language codes |
 | `localesDir` | `string` | `"./locales"` | Output directory |
@@ -186,7 +191,12 @@ LLM provides LLM-powered translation using translategemma models. It can run loc
 ```json
 {
   "engine": "llm",
-  "endpointUrl": "http://localhost:8765",
+  "llm": {
+    "model": "translategemma",
+    "baseUrl": "http://localhost:11434",
+    "numCtx": 2048,
+    "maxSiblingContext": 3
+  },
   "sourceFile": "en.json",
   "targetLanguages": ["de", "fr", "es"],
   "localesDir": "./locales"
@@ -197,10 +207,12 @@ Features:
 - 🤖 LLM-powered translations via translategemma models
 - 💻 Local execution (no data leaves your machine)
 - ☁️ Optional cloud endpoint support
-- 🎯 Context-aware translations
+- 🎯 Context-aware translations (key path + related strings in the same JSON section)
 - 🌐 Same CLI/API interface as other engines
 
-When translating JSON objects, the LLM engine automatically includes each string's key path (e.g. `server.deployment.starter`) and up to 3 sibling strings from the same section. This helps disambiguate short labels like "Starter" that could otherwise be translated incorrectly without surrounding context.
+When translating JSON objects with the `llm` engine, each string's **key path** (e.g. `server.deployment.starter`) and up to `maxSiblingContext` **sibling strings** from the same object (or adjacent array entries) are sent to the model. Siblings with similar key prefixes are preferred. This helps disambiguate short labels like "Starter" that could otherwise be translated incorrectly without surrounding context.
+
+Context and path-scoped caching apply **only** to the `llm` engine. Other engines use text-only cache keys and do not send key-path context to the API.
 
 ### **Utilities**
 ```bash
@@ -256,10 +268,15 @@ const libreConfig = {
   localesDir: './i18n'
 };
 
-// LLM (recommended to use translategemma)
+// LLM (recommended to use translategemma via Ollama)
 const llmConfig = {
   engine: 'llm',
-  endpointUrl: 'http://localhost:8765',
+  llm: {
+    model: 'translategemma',
+    baseUrl: 'http://localhost:11434',
+    numCtx: 2048,
+    maxSiblingContext: 3
+  },
   sourceFile: 'en.json',
   targetLanguages: ['de', 'fr', 'es'],
   localesDir: './i18n'
@@ -310,6 +327,13 @@ export TRANSLATINATOR_TARGET_LANGUAGES="de,fr,es,it"
 
 # Direct DeepL key (auto-selects DeepL engine)
 export DEEPL_API_KEY="your-deepl-api-key"
+
+# LLM engine (OpenAI-compatible / Ollama)
+export TRANSLATION_ENGINE="llm"
+export TRANSLATION_LLM_MODEL="translategemma"
+export TRANSLATION_LLM_BASE_URL="http://localhost:11434"
+export TRANSLATION_LLM_NUM_CTX="2048"
+export TRANSLATION_LLM_MAX_SIBLING_CONTEXT="3"
 ```
 
 ---
@@ -317,10 +341,11 @@ export DEEPL_API_KEY="your-deepl-api-key"
 ## 💾 **Caching System**
 
 **Intelligent Caching:**
-- Translations cached by source text + target language
+- **Google, DeepL, Yandex, LibreTranslate:** cache key is source text + target language
+- **LLM engine:** cache key is `key.path:sourceText` + target language so the same English word at different JSON paths can have different translations
 - Cache stored in `.translatinator-cache` directory (configurable)
 - Use `--force` or `force: true` to bypass cache and retranslate
-- Run `npx translatinator clear-cache` to clear all cached translations
+- Run `npx translatinator clear-cache` after switching to `llm` or changing context settings so stale text-only entries are not mixed with path-scoped entries
 
 **Benefits:**
 - ⚡ Faster repeat translations

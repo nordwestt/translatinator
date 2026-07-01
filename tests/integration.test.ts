@@ -262,6 +262,7 @@ describe('Integration Tests', () => {
 
   describe('Error Handling', () => {
     it('should handle missing source file gracefully', async () => {
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
       const config = {
         apiKey: 'test-api-key',
         sourceFile: 'nonexistent.json',
@@ -271,6 +272,9 @@ describe('Integration Tests', () => {
       await fs.writeJson(configPath, config);
 
       await expect(translate(configPath)).rejects.toThrow('Source file not found');
+      expect(consoleErrorSpy).toHaveBeenCalled();
+
+      consoleErrorSpy.mockRestore();
     });
 
     it('should handle missing API key', async () => {

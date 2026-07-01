@@ -28,6 +28,7 @@ export class ConfigLoader {
       verbose: false,
       targetLanguages: [],
       excludeKeys: [],
+      saveBatchSize: 10,
       llm: {
         model: 'translategemma',
         baseUrl: 'http://localhost:11434',

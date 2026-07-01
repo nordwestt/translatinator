@@ -40,6 +40,12 @@ export interface TranslatinatorConfig {
   /** Enable verbose logging (default: false) */
   verbose?: boolean;
 
+  /** Flush locale file and cache after this many translated keys (default: 10, set 0 to disable) */
+  saveBatchSize?: number;
+
+  /** Show a progress bar during translation (default: true when stderr is a TTY) */
+  showProgress?: boolean;
+
   /** OpenAI-compatible API configuration (used with 'llm' engine) */
   llm?: LLMConfig;
 }
@@ -58,6 +64,22 @@ export interface LLMConfig {
 export interface TranslationContext {
   keyPath: string[];
   siblings?: Array<{ key: string; value: string }>;
+}
+
+export interface TranslationProgressCallbacks {
+  onProgress?: (completed: number, total: number, keyPath: string) => void | Promise<void>;
+  onKeyTranslated?: (keyPath: string[], value: string) => void | Promise<void>;
+}
+
+export interface TranslateObjectOptions {
+  progress?: TranslationProgressCallbacks;
+  /** @internal */
+  _progressState?: {
+    completed: number;
+    total: number;
+    onProgress?: TranslationProgressCallbacks['onProgress'];
+    onKeyTranslated?: TranslationProgressCallbacks['onKeyTranslated'];
+  };
 }
 
 export interface TranslationEntry {

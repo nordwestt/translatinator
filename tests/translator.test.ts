@@ -108,10 +108,14 @@ describe('TranslationService', () => {
     });
 
     it('should throw error when translation fails', async () => {
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
       const translate = require('translate');
       translate.mockRejectedValue(new Error('API Error'));
 
       await expect(translator.translateText('Hello', 'de')).rejects.toThrow('API Error');
+      expect(consoleErrorSpy).toHaveBeenCalled();
+
+      consoleErrorSpy.mockRestore();
     });
 
     describe('template variable protection', () => {
@@ -326,6 +330,27 @@ describe('TranslationService', () => {
       expect(await translator.translateObject(42, 'de')).toBe(42);
       expect(await translator.translateObject(true, 'de')).toBe(true);
       expect(await translator.translateObject(null, 'de')).toBe(null);
+    });
+
+    it('should report progress while translating object leaves', async () => {
+      const input = {
+        greeting: 'Hello',
+        nested: {
+          farewell: 'Goodbye'
+        }
+      };
+      const onProgress = jest.fn();
+      const onKeyTranslated = jest.fn();
+
+      await translator.translateObject(input, 'de', 'en', [], {
+        progress: { onProgress, onKeyTranslated }
+      });
+
+      expect(onProgress).toHaveBeenCalledTimes(2);
+      expect(onProgress).toHaveBeenNthCalledWith(1, 1, 2, 'greeting');
+      expect(onProgress).toHaveBeenNthCalledWith(2, 2, 2, 'nested.farewell');
+      expect(onKeyTranslated).toHaveBeenCalledWith(['greeting'], 'Hallo');
+      expect(onKeyTranslated).toHaveBeenCalledWith(['nested', 'farewell'], 'Auf Wiedersehen');
     });
   });
 
@@ -562,6 +587,7 @@ describe('TranslationService', () => {
     });
 
     it('should throw error when API response is invalid', async () => {
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
       mockAxios.post.mockResolvedValue({
         data: { choices: [] }
       });
@@ -569,12 +595,25 @@ describe('TranslationService', () => {
       await expect(llmTranslator.translateText('Hello', 'de')).rejects.toThrow(
         'Invalid response from OpenAI-compatible API'
       );
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        '[ERROR] Failed to translate "Hello" to de:',
+        expect.any(Error)
+      );
+
+      consoleErrorSpy.mockRestore();
     });
 
     it('should throw error on API failure', async () => {
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
       mockAxios.post.mockRejectedValue(new Error('Connection refused'));
 
       await expect(llmTranslator.translateText('Hello', 'de')).rejects.toThrow('Connection refused');
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        '[ERROR] Failed to translate "Hello" to de:',
+        expect.any(Error)
+      );
+
+      consoleErrorSpy.mockRestore();
     });
 
     it('should use default LLM config values', async () => {

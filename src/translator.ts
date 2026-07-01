@@ -1,6 +1,6 @@
 import translate from "translate";
 import axios from 'axios';
-import { TranslatinatorConfig, TranslationEntry, TranslationContext } from './types';
+import { TranslatinatorConfig, TranslationEntry, TranslationContext, TranslateObjectOptions } from './types';
 import { CacheManager } from './cache';
 import { Logger } from './logger';
 
@@ -79,6 +79,48 @@ export class TranslationService {
 
   private formatPromptValue(value: string): string {
     return JSON.stringify(value);
+  }
+
+  private countTranslatableStrings(obj: unknown, keyPath: string[] = []): number {
+    if (typeof obj === 'string') {
+      return 1;
+    }
+
+    if (Array.isArray(obj)) {
+      let count = 0;
+      for (let i = 0; i < obj.length; i++) {
+        count += this.countTranslatableStrings(obj[i], [...keyPath, String(i)]);
+      }
+      return count;
+    }
+
+    if (typeof obj === 'object' && obj !== null) {
+      let count = 0;
+      for (const [key, value] of Object.entries(obj)) {
+        if (this.shouldExcludeKey(key)) continue;
+        count += this.countTranslatableStrings(value, [...keyPath, key]);
+      }
+      return count;
+    }
+
+    return 0;
+  }
+
+  private async notifyTranslationProgress(
+    keyPath: string[],
+    translatedValue: string,
+    progressState?: TranslateObjectOptions['_progressState']
+  ): Promise<void> {
+    if (!progressState) return;
+
+    progressState.completed++;
+    const keyPathLabel = keyPath.join('.');
+    await progressState.onProgress?.(
+      progressState.completed,
+      progressState.total,
+      keyPathLabel
+    );
+    await progressState.onKeyTranslated?.(keyPath, translatedValue);
   }
 
   private getCacheKey(text: string, context?: TranslationContext): string {
@@ -317,11 +359,29 @@ ${text}`;
     obj: any,
     targetLang: string,
     sourceLang: string = 'en',
-    keyPath: string[] = []
+    keyPath: string[] = [],
+    options?: TranslateObjectOptions
   ): Promise<any> {
+    let resolvedOptions = options;
+    if (keyPath.length === 0 && options?.progress && !options._progressState) {
+      resolvedOptions = {
+        ...options,
+        _progressState: {
+          completed: 0,
+          total: this.countTranslatableStrings(obj),
+          onProgress: options.progress.onProgress,
+          onKeyTranslated: options.progress.onKeyTranslated
+        }
+      };
+    }
+
+    const progressState = resolvedOptions?._progressState;
+
     if (typeof obj === 'string') {
       const context = keyPath.length > 0 ? { keyPath } : undefined;
-      return await this.translateText(obj, targetLang, sourceLang, context);
+      const translated = await this.translateText(obj, targetLang, sourceLang, context);
+      await this.notifyTranslationProgress(keyPath, translated, progressState);
+      return translated;
     }
 
     if (Array.isArray(obj)) {
@@ -336,9 +396,19 @@ ${text}`;
             keyPath: currentPath,
             siblings: this.collectArraySiblingStrings(obj, i, maxSiblings)
           };
-          results.push(await this.translateText(obj[i] as string, targetLang, sourceLang, context));
+          const translated = await this.translateText(obj[i] as string, targetLang, sourceLang, context);
+          await this.notifyTranslationProgress(currentPath, translated, progressState);
+          results.push(translated);
         } else {
-          results.push(await this.translateObject(obj[i], targetLang, sourceLang, currentPath));
+          results.push(
+            await this.translateObject(
+              obj[i],
+              targetLang,
+              sourceLang,
+              currentPath,
+              resolvedOptions
+            )
+          );
         }
       }
       return results;
@@ -365,9 +435,17 @@ ${text}`;
               maxSiblings
             );
           }
-          result[key] = await this.translateText(value, targetLang, sourceLang, context);
+          const translated = await this.translateText(value, targetLang, sourceLang, context);
+          await this.notifyTranslationProgress(currentPath, translated, progressState);
+          result[key] = translated;
         } else {
-          result[key] = await this.translateObject(value, targetLang, sourceLang, currentPath);
+          result[key] = await this.translateObject(
+            value,
+            targetLang,
+            sourceLang,
+            currentPath,
+            resolvedOptions
+          );
         }
       }
       return result;

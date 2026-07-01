@@ -61,6 +61,7 @@ describe('ConfigLoader', () => {
       expect(config.excludeKeys).toEqual([]);
       expect(config.llm?.model).toBe('translategemma');
       expect(config.llm?.maxSiblingContext).toBe(3);
+      expect(config.saveBatchSize).toBe(10);
       expect(config.llm?.numCtx).toBeUndefined();
     });
 

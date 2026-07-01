@@ -40,6 +40,12 @@ export interface TranslatinatorConfig {
   /** Enable verbose logging (default: false) */
   verbose?: boolean;
 
+  /** Flush locale file and cache after this many translated keys (default: 10, set 0 to disable) */
+  saveBatchSize?: number;
+
+  /** Show a progress bar during translation (default: true when stderr is a TTY) */
+  showProgress?: boolean;
+
   /** OpenAI-compatible API configuration (used with 'llm' engine) */
   llm?: LLMConfig;
 }
@@ -49,8 +55,31 @@ export interface LLMConfig {
   model?: string;
   /** Base URL for the OpenAI-compatible API (default: 'http://localhost:11434') */
   baseUrl?: string;
-  /** Optional context window size */
+  /** Context window size for Ollama-compatible APIs (omit to skip sending options.num_ctx) */
   numCtx?: number;
+  /** Max sibling strings to include in LLM context (default: 3) */
+  maxSiblingContext?: number;
+}
+
+export interface TranslationContext {
+  keyPath: string[];
+  siblings?: Array<{ key: string; value: string }>;
+}
+
+export interface TranslationProgressCallbacks {
+  onProgress?: (completed: number, total: number, keyPath: string) => void | Promise<void>;
+  onKeyTranslated?: (keyPath: string[], value: string) => void | Promise<void>;
+}
+
+export interface TranslateObjectOptions {
+  progress?: TranslationProgressCallbacks;
+  /** @internal */
+  _progressState?: {
+    completed: number;
+    total: number;
+    onProgress?: TranslationProgressCallbacks['onProgress'];
+    onKeyTranslated?: TranslationProgressCallbacks['onKeyTranslated'];
+  };
 }
 
 export interface TranslationEntry {

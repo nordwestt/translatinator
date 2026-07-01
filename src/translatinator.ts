@@ -5,6 +5,8 @@ import { TranslatinatorConfig } from './types';
 import { TranslationService } from './translator';
 import { CacheManager } from './cache';
 import { Logger } from './logger';
+import { ProgressBar } from './progress';
+import { setAtPath } from './json-path';
 
 export class Translatinator {
   private config: TranslatinatorConfig;
@@ -70,10 +72,15 @@ export class Translatinator {
   private async translateToLanguage(sourceData: any, targetLang: string): Promise<void> {
     this.logger.info(`Translating to ${targetLang}...`);
 
-    try {
-      const targetFileName = this.config.filePattern!.replace('{lang}', targetLang);
-      const targetFilePath = path.join(this.config.localesDir, targetFileName);
+    const targetFileName = this.config.filePattern!.replace('{lang}', targetLang);
+    const targetFilePath = path.join(this.config.localesDir, targetFileName);
+    const saveBatchSize = this.config.saveBatchSize ?? 10;
+    const showProgress =
+      this.config.showProgress ??
+      (typeof process.stderr?.isTTY === 'boolean' && process.stderr.isTTY);
+    const progressBar = new ProgressBar(targetLang, showProgress);
 
+    try {
       // Load existing translations if not forcing
       let existingData = {};
       const fileExists = await fs.pathExists(targetFilePath);
@@ -82,37 +89,85 @@ export class Translatinator {
         this.logger.debug(`Loaded existing translations for ${targetLang}`);
       }
 
-      // When not forcing, preserve existing translations and only add missing keys
+      let dataToTranslate: any;
       let finalData: any;
       let translationsPerformed = false;
 
       if (this.config.force) {
-        // Force mode: completely replace with new translations
-        finalData = await this.translator.translateObject(sourceData, targetLang);
+        dataToTranslate = sourceData;
+        finalData = JSON.parse(JSON.stringify(sourceData));
         translationsPerformed = true;
       } else {
-        // Non-force mode: preserve existing values, only translate missing keys
-        finalData = { ...existingData };
         const keysToTranslate = this.getMissingKeys(sourceData, existingData);
-        
-        if (Object.keys(keysToTranslate).length > 0) {
-          const newTranslations = await this.translator.translateObject(keysToTranslate, targetLang);
-          finalData = this.deepMerge(finalData, newTranslations);
-          translationsPerformed = true;
+
+        if (Object.keys(keysToTranslate).length === 0) {
+          if (fileExists) {
+            this.logger.success(`✓ No translation required for ${targetFileName}`);
+          } else {
+            await fs.writeJson(targetFilePath, existingData, { spaces: 2 });
+            this.logger.success(`✓ Created ${targetFileName}`);
+          }
+          return;
         }
+
+        dataToTranslate = keysToTranslate;
+        finalData = JSON.parse(JSON.stringify(existingData));
+        translationsPerformed = true;
       }
 
-      // Only write the file if translations were performed or file doesn't exist
-      if (translationsPerformed || !fileExists) {
+      let pendingSave = 0;
+      let keysTranslated = 0;
+      const flushToDisk = async (): Promise<void> => {
         await fs.writeJson(targetFilePath, finalData, { spaces: 2 });
-        
+        pendingSave = 0;
+      };
+
+      try {
+        const translated = await this.translator.translateObject(
+          dataToTranslate,
+          targetLang,
+          'en',
+          [],
+          {
+            progress: {
+              onProgress: (completed, total, keyPath) => {
+                progressBar.update(completed, total, keyPath);
+              },
+              onKeyTranslated: async (keyPath, value) => {
+                setAtPath(finalData, keyPath, value);
+                keysTranslated++;
+                pendingSave++;
+                if (saveBatchSize > 0 && pendingSave >= saveBatchSize) {
+                  await flushToDisk();
+                }
+              }
+            }
+          }
+        );
+
+        finalData = this.config.force
+          ? translated
+          : this.deepMerge(finalData, translated);
+
+        await flushToDisk();
+        progressBar.finish();
+
         if (translationsPerformed) {
           this.logger.success(`✓ Created/updated ${targetFileName}`);
         } else {
           this.logger.success(`✓ Created ${targetFileName}`);
         }
-      } else {
-        this.logger.success(`✓ No translation required for ${targetFileName}`);
+      } catch (error) {
+        progressBar.finish();
+        if (keysTranslated > 0) {
+          try {
+            await flushToDisk();
+            this.logger.warn(`Saved partial progress for ${targetFileName} before failure`);
+          } catch (saveError) {
+            this.logger.error(`Failed to save partial progress for ${targetFileName}:`, saveError);
+          }
+        }
+        throw error;
       }
     } catch (error) {
       this.logger.error(`Failed to translate to ${targetLang}:`, error);

@@ -1,6 +1,6 @@
 import translate from "translate";
 import axios from 'axios';
-import { TranslatinatorConfig, TranslationCache, TranslationEntry, LLMConfig } from './types';
+import { TranslatinatorConfig, TranslationEntry, TranslationContext, TranslateObjectOptions } from './types';
 import { CacheManager } from './cache';
 import { Logger } from './logger';
 
@@ -54,12 +54,143 @@ export class TranslationService {
     this.setupTranslateEngine();
   }
 
-  private getLLMConfig(): Required<LLMConfig> {
+  private isLLMEngine(): boolean {
+    return this.config.engine === 'llm';
+  }
+
+  private getLLMConfig(): { model: string; baseUrl: string; maxSiblingContext: number } {
     return {
       model: this.config.llm?.model || 'translategemma',
       baseUrl: (this.config.llm?.baseUrl || 'http://localhost:11434').replace(/\/+$/, ''),
-      numCtx: this.config.llm?.numCtx || 2048
+      maxSiblingContext: this.config.llm?.maxSiblingContext ?? 3
     };
+  }
+
+  private siblingKeyScore(currentKey: string, candidateKey: string): number {
+    const a = currentKey.toLowerCase();
+    const b = candidateKey.toLowerCase();
+    let prefixLen = 0;
+    const minLen = Math.min(a.length, b.length);
+    while (prefixLen < minLen && a[prefixLen] === b[prefixLen]) {
+      prefixLen++;
+    }
+    return prefixLen;
+  }
+
+  private formatPromptValue(value: string): string {
+    return JSON.stringify(value);
+  }
+
+  private countTranslatableStrings(obj: unknown, keyPath: string[] = []): number {
+    if (typeof obj === 'string') {
+      return 1;
+    }
+
+    if (Array.isArray(obj)) {
+      let count = 0;
+      for (let i = 0; i < obj.length; i++) {
+        count += this.countTranslatableStrings(obj[i], [...keyPath, String(i)]);
+      }
+      return count;
+    }
+
+    if (typeof obj === 'object' && obj !== null) {
+      let count = 0;
+      for (const [key, value] of Object.entries(obj)) {
+        if (this.shouldExcludeKey(key)) continue;
+        count += this.countTranslatableStrings(value, [...keyPath, key]);
+      }
+      return count;
+    }
+
+    return 0;
+  }
+
+  private async notifyTranslationProgress(
+    keyPath: string[],
+    translatedValue: string,
+    progressState?: TranslateObjectOptions['_progressState']
+  ): Promise<void> {
+    if (!progressState) return;
+
+    progressState.completed++;
+    const keyPathLabel = keyPath.join('.');
+    await progressState.onProgress?.(
+      progressState.completed,
+      progressState.total,
+      keyPathLabel
+    );
+    await progressState.onKeyTranslated?.(keyPath, translatedValue);
+  }
+
+  private getCacheKey(text: string, context?: TranslationContext): string {
+    if (this.config.engine === 'llm' && context?.keyPath?.length) {
+      return `${context.keyPath.join('.')}:${text}`;
+    }
+    return text;
+  }
+
+  private collectSiblingStrings(
+    parent: Record<string, unknown>,
+    currentKey: string,
+    max: number
+  ): Array<{ key: string; value: string }> {
+    if (max <= 0) return [];
+
+    const candidates: Array<{ key: string; value: string; score: number }> = [];
+    for (const [key, value] of Object.entries(parent)) {
+      if (key === currentKey) continue;
+      if (typeof value !== 'string') continue;
+      if (this.shouldExcludeKey(key)) continue;
+      candidates.push({
+        key,
+        value,
+        score: this.siblingKeyScore(currentKey, key)
+      });
+    }
+
+    candidates.sort((a, b) => b.score - a.score || a.key.localeCompare(b.key));
+    return candidates.slice(0, max).map(({ key, value }) => ({ key, value }));
+  }
+
+  private collectArraySiblingStrings(
+    arr: unknown[],
+    currentIndex: number,
+    max: number
+  ): Array<{ key: string; value: string }> {
+    if (max <= 0) return [];
+
+    const neighbors: Array<{ index: number; distance: number; value: string }> = [];
+    for (let i = 0; i < arr.length; i++) {
+      if (i === currentIndex) continue;
+      if (typeof arr[i] !== 'string') continue;
+      neighbors.push({
+        index: i,
+        distance: Math.abs(i - currentIndex),
+        value: arr[i] as string
+      });
+    }
+
+    neighbors.sort((a, b) => a.distance - b.distance || a.index - b.index);
+    return neighbors.slice(0, max).map((n) => ({
+      key: String(n.index),
+      value: n.value
+    }));
+  }
+
+  private buildContextSection(context?: TranslationContext): string {
+    if (!context?.keyPath?.length) return '';
+
+    let section = `Key path: ${context.keyPath.join('.')}`;
+
+    if (context.siblings && context.siblings.length > 0) {
+      section += '\nRelated strings:';
+      for (const sibling of context.siblings) {
+        section += `\n- ${sibling.key}: ${this.formatPromptValue(sibling.value)}`;
+      }
+    }
+
+    return section;
   }
 
   private getLanguageName(code: string): string {
@@ -75,6 +206,20 @@ export class TranslationService {
       return placeholder;
     });
     return { cleanedText, variables };
+  }
+
+  private warnIfTemplatePlaceholdersAltered(translated: string, originalCleaned: string): void {
+    const placeholderMatches = originalCleaned.match(/\x00TMPL_\d+\x00/g);
+    if (!placeholderMatches) return;
+
+    for (const placeholder of placeholderMatches) {
+      if (!translated.includes(placeholder)) {
+        this.logger.warn(
+          `LLM response may have altered template placeholder ${placeholder}; output may be incorrect`
+        );
+        return;
+      }
+    }
   }
 
   private restoreTemplateVariables(text: string, variables: string[]): string {
@@ -110,29 +255,43 @@ export class TranslationService {
     this.logger.debug(`Translation engine set to: ${translate.engine}`);
   }
 
-  private async translateWithLLM(text: string, targetLang: string, sourceLang: string = 'en'): Promise<string> {
+  private async translateWithLLM(
+    text: string,
+    targetLang: string,
+    sourceLang: string = 'en',
+    context?: TranslationContext
+  ): Promise<string> {
     const oc = this.getLLMConfig();
     const sourceName = this.getLanguageName(sourceLang);
     const targetName = this.getLanguageName(targetLang);
+    const contextSection = this.buildContextSection(context);
 
-    const prompt = `You are a professional ${sourceName} (${sourceLang}) to ${targetName} (${targetLang}) translator. Your goal is to accurately convey the meaning and nuances of the original ${sourceName} text while adhering to ${targetName} grammar, vocabulary, and cultural sensitivities.
-Produce only the ${targetName} translation, without any additional explanations or commentary, and leave all \x00TMPL_X\x00 placeholders intact. Please translate the following ${sourceName} text into ${targetName}:
+    const baseInstructions = `You are a professional ${sourceName} (${sourceLang}) to ${targetName} (${targetLang}) translator. Translate only the user message into ${targetName}. Output nothing else—no explanations, labels, or metadata. Leave all \x00TMPL_X\x00 placeholders unchanged.`;
 
-
-${text}`;
+    const systemContent = contextSection
+      ? `${baseInstructions}\n\nUse this metadata to pick the correct meaning (do not translate the metadata itself):\n${contextSection}`
+      : baseInstructions;
 
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (this.config.apiKey) {
       headers['Authorization'] = `Bearer ${this.config.apiKey}`;
     }
 
+    const body: Record<string, unknown> = {
+      model: oc.model,
+      messages: [
+        { role: 'system', content: systemContent },
+        { role: 'user', content: text }
+      ],
+      stream: false
+    };
+    if (this.config.llm?.numCtx !== undefined) {
+      body.options = { num_ctx: this.config.llm.numCtx };
+    }
+
     const response = await axios.post(
       `${oc.baseUrl}/v1/chat/completions`,
-      {
-        model: oc.model,
-        messages: [{ role: 'user', content: prompt }],
-        stream: false
-      },
+      body,
       { headers }
     );
 
@@ -141,13 +300,21 @@ ${text}`;
       throw new Error('Invalid response from OpenAI-compatible API: missing choices[0].message.content');
     }
 
-    return content.trim();
+    const trimmed = content.trim();
+    this.warnIfTemplatePlaceholdersAltered(trimmed, text);
+    return trimmed;
   }
 
-  async translateText(text: string, targetLang: string, sourceLang: string = 'en'): Promise<string> {
+  async translateText(
+    text: string,
+    targetLang: string,
+    sourceLang: string = 'en',
+    context?: TranslationContext
+  ): Promise<string> {
     const { cleanedText, variables } = this.extractTemplateVariables(text);
+    const cacheKey = this.getCacheKey(cleanedText, context);
 
-    const cached = this.cache.getCachedTranslation(cleanedText, targetLang);
+    const cached = this.cache.getCachedTranslation(cacheKey, targetLang);
     if (cached && !this.config.force) {
       this.logger.debug(`Using cached translation for "${cleanedText}" -> ${targetLang}`);
       return this.restoreTemplateVariables(cached.translated, variables);
@@ -157,12 +324,12 @@ ${text}`;
       this.logger.debug(`Translating "${cleanedText}" from ${sourceLang} to ${targetLang}`);
 
       const rawTranslated = this.config.engine === 'llm'
-        ? await this.translateWithLLM(cleanedText, targetLang, sourceLang)
+        ? await this.translateWithLLM(cleanedText, targetLang, sourceLang, context)
         : await translate(cleanedText, { from: sourceLang, to: targetLang });
       
       const translatedText = this.restoreTemplateVariables(rawTranslated, variables);
 
-      this.cache.setCachedTranslation(cleanedText, targetLang, {
+      this.cache.setCachedTranslation(cacheKey, targetLang, {
         original: cleanedText,
         translated: rawTranslated,
         timestamp: Date.now(),
@@ -176,29 +343,98 @@ ${text}`;
     }
   }
 
-  async translateObject(obj: any, targetLang: string, sourceLang: string = 'en'): Promise<any> {
+  async translateObject(
+    obj: any,
+    targetLang: string,
+    sourceLang: string = 'en',
+    keyPath: string[] = [],
+    options?: TranslateObjectOptions
+  ): Promise<any> {
+    let resolvedOptions = options;
+    if (keyPath.length === 0 && options?.progress && !options._progressState) {
+      resolvedOptions = {
+        ...options,
+        _progressState: {
+          completed: 0,
+          total: this.countTranslatableStrings(obj),
+          onProgress: options.progress.onProgress,
+          onKeyTranslated: options.progress.onKeyTranslated
+        }
+      };
+    }
+
+    const progressState = resolvedOptions?._progressState;
+
     if (typeof obj === 'string') {
-      return await this.translateText(obj, targetLang, sourceLang);
+      const context = keyPath.length > 0 ? { keyPath } : undefined;
+      const translated = await this.translateText(obj, targetLang, sourceLang, context);
+      await this.notifyTranslationProgress(keyPath, translated, progressState);
+      return translated;
     }
 
     if (Array.isArray(obj)) {
       const results = [];
-      for (const item of obj) {
-        results.push(await this.translateObject(item, targetLang, sourceLang));
+      const maxSiblings = this.isLLMEngine() ? this.getLLMConfig().maxSiblingContext : 0;
+
+      for (let i = 0; i < obj.length; i++) {
+        const currentPath = [...keyPath, String(i)];
+
+        if (typeof obj[i] === 'string' && this.isLLMEngine()) {
+          const context: TranslationContext = {
+            keyPath: currentPath,
+            siblings: this.collectArraySiblingStrings(obj, i, maxSiblings)
+          };
+          const translated = await this.translateText(obj[i] as string, targetLang, sourceLang, context);
+          await this.notifyTranslationProgress(currentPath, translated, progressState);
+          results.push(translated);
+        } else {
+          results.push(
+            await this.translateObject(
+              obj[i],
+              targetLang,
+              sourceLang,
+              currentPath,
+              resolvedOptions
+            )
+          );
+        }
       }
       return results;
     }
 
     if (typeof obj === 'object' && obj !== null) {
       const result: any = {};
+      const maxSiblings = this.isLLMEngine() ? this.getLLMConfig().maxSiblingContext : 0;
+
       for (const [key, value] of Object.entries(obj)) {
-        // Check if this key should be excluded
         if (this.shouldExcludeKey(key)) {
           result[key] = value;
           continue;
         }
 
-        result[key] = await this.translateObject(value, targetLang, sourceLang);
+        const currentPath = [...keyPath, key];
+
+        if (typeof value === 'string') {
+          const context: TranslationContext = { keyPath: currentPath };
+          if (maxSiblings > 0) {
+            context.siblings = this.collectSiblingStrings(
+              obj as Record<string, unknown>,
+              key,
+              maxSiblings
+            );
+          }
+          const translated = await this.translateText(value, targetLang, sourceLang, context);
+          await this.notifyTranslationProgress(currentPath, translated, progressState);
+          result[key] = translated;
+        } else {
+          result[key] = await this.translateObject(
+            value,
+            targetLang,
+            sourceLang,
+            currentPath,
+            resolvedOptions
+          );
+        }
       }
       return result;
     }

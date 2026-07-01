@@ -108,10 +108,14 @@ describe('TranslationService', () => {
     });
 
     it('should throw error when translation fails', async () => {
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
       const translate = require('translate');
       translate.mockRejectedValue(new Error('API Error'));
 
       await expect(translator.translateText('Hello', 'de')).rejects.toThrow('API Error');
+      expect(consoleErrorSpy).toHaveBeenCalled();
+
+      consoleErrorSpy.mockRestore();
     });
 
     describe('template variable protection', () => {
@@ -327,6 +331,27 @@ describe('TranslationService', () => {
       expect(await translator.translateObject(true, 'de')).toBe(true);
       expect(await translator.translateObject(null, 'de')).toBe(null);
     });
+
+    it('should report progress while translating object leaves', async () => {
+      const input = {
+        greeting: 'Hello',
+        nested: {
+          farewell: 'Goodbye'
+        }
+      };
+      const onProgress = jest.fn();
+      const onKeyTranslated = jest.fn();
+
+      await translator.translateObject(input, 'de', 'en', [], {
+        progress: { onProgress, onKeyTranslated }
+      });
+
+      expect(onProgress).toHaveBeenCalledTimes(2);
+      expect(onProgress).toHaveBeenNthCalledWith(1, 1, 2, 'greeting');
+      expect(onProgress).toHaveBeenNthCalledWith(2, 2, 2, 'nested.farewell');
+      expect(onKeyTranslated).toHaveBeenCalledWith(['greeting'], 'Hallo');
+      expect(onKeyTranslated).toHaveBeenCalledWith(['nested', 'farewell'], 'Auf Wiedersehen');
+    });
   });
 
   describe('getUsage', () => {
@@ -367,7 +392,8 @@ describe('TranslationService', () => {
         llm: {
           model: 'translategemma',
           baseUrl: 'http://localhost:11434',
-          numCtx: 2048
+          numCtx: 2048,
+          maxSiblingContext: 3
         }
       };
 
@@ -389,7 +415,8 @@ describe('TranslationService', () => {
         expect.objectContaining({
           model: 'translategemma',
           messages: expect.arrayContaining([
-            expect.objectContaining({ role: 'user' })
+            expect.objectContaining({ role: 'system' }),
+            expect.objectContaining({ role: 'user', content: 'Hello' })
           ]),
           stream: false
         }),
@@ -402,22 +429,16 @@ describe('TranslationService', () => {
     it('should construct the TranslateGemma prompt with language names and codes', async () => {
       await llmTranslator.translateText('Hello', 'de');
 
-      const callArgs = mockAxios.post.mock.calls[0];
-      const payload = callArgs[1];
-      const prompt = payload.messages[0].content;
-
-      expect(prompt).toContain('English (en) to German (de) translator');
-      expect(prompt).toContain('Hello');
-      expect(prompt).toMatch(/\n\n\nHello/);
+      const payload = mockAxios.post.mock.calls[0][1];
+      expect(payload.messages[0].content).toContain('English (en) to German (de) translator');
+      expect(payload.messages[1].content).toBe('Hello');
     });
 
     it('should handle region-specific language codes', async () => {
       await llmTranslator.translateText('Hello', 'de-DE', 'en-US');
 
-      const callArgs = mockAxios.post.mock.calls[0];
-      const prompt = callArgs[1].messages[0].content;
-
-      expect(prompt).toContain('English (en-US) to German (de-DE) translator');
+      const systemPrompt = mockAxios.post.mock.calls[0][1].messages[0].content;
+      expect(systemPrompt).toContain('English (en-US) to German (de-DE) translator');
     });
 
     it('should include Bearer token when API key is provided', async () => {
@@ -526,10 +547,9 @@ describe('TranslationService', () => {
 
         await llmTranslator.translateText('Hello {name}', 'de');
 
-        const callArgs = mockAxios.post.mock.calls[0];
-        const prompt = callArgs[1].messages[0].content;
-        expect(prompt).toContain('\x00TMPL_0\x00');
-        expect(prompt).not.toContain('{name}');
+        const userMessage = mockAxios.post.mock.calls[0][1].messages[1].content;
+        expect(userMessage).toContain('\x00TMPL_0\x00');
+        expect(userMessage).not.toContain('{name}');
       });
 
       it('should restore cached LLM translation with template variables', async () => {
@@ -561,6 +581,7 @@ describe('TranslationService', () => {
     });
 
     it('should throw error when API response is invalid', async () => {
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
       mockAxios.post.mockResolvedValue({
         data: { choices: [] }
       });
@@ -568,12 +589,25 @@ describe('TranslationService', () => {
       await expect(llmTranslator.translateText('Hello', 'de')).rejects.toThrow(
         'Invalid response from OpenAI-compatible API'
       );
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        '[ERROR] Failed to translate "Hello" to de:',
+        expect.any(Error)
+      );
+
+      consoleErrorSpy.mockRestore();
     });
 
     it('should throw error on API failure', async () => {
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
       mockAxios.post.mockRejectedValue(new Error('Connection refused'));
 
       await expect(llmTranslator.translateText('Hello', 'de')).rejects.toThrow('Connection refused');
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        '[ERROR] Failed to translate "Hello" to de:',
+        expect.any(Error)
+      );
+
+      consoleErrorSpy.mockRestore();
     });
 
     it('should use default LLM config values', async () => {
@@ -636,6 +670,221 @@ describe('TranslationService', () => {
         character: { count: 0, limit: 'unlimited' },
         engine: 'llm'
       });
+    });
+
+    describe('LLM context-aware translation', () => {
+      beforeEach(() => {
+        mockAxios.post.mockReset();
+        mockAxios.post.mockResolvedValue({
+          data: {
+            choices: [{ message: { content: 'Tradotto' } }]
+          }
+        });
+      });
+
+      it('should send source text only in the user message when context is present', async () => {
+        await llmTranslator.translateObject(
+          { dashboard: { title: 'Overview' } },
+          'it'
+        );
+
+        const payload = mockAxios.post.mock.calls[0][1];
+        expect(payload.messages[0].role).toBe('system');
+        expect(payload.messages[0].content).toContain('Key path: dashboard.title');
+        expect(payload.messages[1].role).toBe('user');
+        expect(payload.messages[1].content).toBe('Overview');
+      });
+
+      it('should include key path and sibling strings when translating nested objects', async () => {
+        const input = {
+          server: {
+            deployment: {
+              starter: 'Starter',
+              pro: 'Pro',
+              enterprise: 'Enterprise'
+            }
+          }
+        };
+
+        await llmTranslator.translateObject(input, 'it');
+
+        const payload = mockAxios.post.mock.calls[0][1];
+        expect(payload.messages[0].content).toContain('Key path: server.deployment.starter');
+        expect(payload.messages[0].content).toContain('- pro: "Pro"');
+        expect(payload.messages[0].content).toContain('- enterprise: "Enterprise"');
+        expect(payload.messages[1].content).toBe('Starter');
+      });
+
+      it('should cap sibling context at maxSiblingContext (default 3)', async () => {
+        const input = {
+          section: {
+            a: 'A',
+            b: 'B',
+            c: 'C',
+            d: 'D',
+            e: 'E',
+            target: 'Target'
+          }
+        };
+
+        await llmTranslator.translateObject(input, 'de');
+
+        const systemPrompt = mockAxios.post.mock.calls.find(
+          (call: any[]) => call[1].messages[0].content.includes('Key path: section.target')
+        )?.[1].messages[0].content;
+
+        expect(systemPrompt).toBeDefined();
+        const siblingLines = systemPrompt.match(/^- \w+: "/gm) || [];
+        expect(siblingLines.length).toBeLessThanOrEqual(3);
+        expect(systemPrompt).not.toContain('- target: "Target"');
+      });
+
+      it('should not include context section for direct translateText calls', async () => {
+        await llmTranslator.translateText('Hello', 'de');
+
+        const systemPrompt = mockAxios.post.mock.calls[0][1].messages[0].content;
+        expect(systemPrompt).not.toContain('Key path:');
+        expect(mockAxios.post.mock.calls[0][1].messages[1].content).toBe('Hello');
+      });
+
+      it('should use path-scoped cache keys for the same text at different paths', async () => {
+        mockAxios.post
+          .mockResolvedValueOnce({ data: { choices: [{ message: { content: 'Antipasto' } }] } })
+          .mockResolvedValueOnce({ data: { choices: [{ message: { content: 'Base' } }] } });
+
+        await llmTranslator.translateObject({ menu: { starter: 'Starter' } }, 'it');
+        await llmTranslator.translateObject({ server: { deployment: { starter: 'Starter' } } }, 'it');
+
+        expect(mockAxios.post).toHaveBeenCalledTimes(2);
+        expect(cacheManager.getCachedTranslation('menu.starter:Starter', 'it')).not.toBeNull();
+        expect(cacheManager.getCachedTranslation('server.deployment.starter:Starter', 'it')).not.toBeNull();
+      });
+
+      it('should pass numCtx in the API payload options when configured', async () => {
+        await llmTranslator.translateText('Hello', 'de');
+
+        const payload = mockAxios.post.mock.calls[0][1];
+        expect(payload.options).toEqual({ num_ctx: 2048 });
+      });
+
+      it('should omit options.num_ctx when numCtx is not configured', async () => {
+        const noCtxConfig: TranslatinatorConfig = {
+          engine: 'llm',
+          sourceFile: 'en.json',
+          targetLanguages: ['de'],
+          localesDir: './locales',
+          llm: {
+            model: 'translategemma',
+            baseUrl: 'http://localhost:11434'
+          }
+        };
+        const noCtxTranslator = new TranslationService(noCtxConfig, cacheManager, logger);
+        await noCtxTranslator.translateText('Hello', 'de');
+
+        const payload = mockAxios.post.mock.calls[mockAxios.post.mock.calls.length - 1][1];
+        expect(payload.options).toBeUndefined();
+      });
+
+      it('should JSON-escape sibling values with quotes in the prompt', async () => {
+        const input = {
+          section: {
+            label: 'Say "hello"',
+            target: 'Target'
+          }
+        };
+
+        await llmTranslator.translateObject(input, 'de');
+
+        const systemPrompt = mockAxios.post.mock.calls.find(
+          (call: any[]) => call[1].messages[0].content.includes('Key path: section.target')
+        )?.[1].messages[0].content;
+
+        expect(systemPrompt).toContain('- label: "Say \\"hello\\""');
+      });
+
+      it('should not include sibling context when maxSiblingContext is 0', async () => {
+        const noSiblingsConfig: TranslatinatorConfig = {
+          engine: 'llm',
+          sourceFile: 'en.json',
+          targetLanguages: ['de'],
+          localesDir: './locales',
+          llm: {
+            model: 'translategemma',
+            baseUrl: 'http://localhost:11434',
+            maxSiblingContext: 0
+          }
+        };
+        const noSiblingsTranslator = new TranslationService(
+          noSiblingsConfig,
+          cacheManager,
+          logger
+        );
+
+        await noSiblingsTranslator.translateObject(
+          { section: { a: 'A', target: 'Target' } },
+          'de'
+        );
+
+        const systemPrompt = mockAxios.post.mock.calls.find((call: any[]) =>
+          /Key path: section\.target(\s|$)/.test(call[1].messages[0].content)
+        )?.[1].messages[0].content;
+
+        expect(systemPrompt).toBeDefined();
+        expect(systemPrompt).not.toContain('Related strings:');
+      });
+
+      it('should include adjacent array strings as sibling context', async () => {
+        const input = {
+          items: ['First', 'Second', 'Third']
+        };
+
+        await llmTranslator.translateObject(input, 'de');
+
+        const systemPrompt = mockAxios.post.mock.calls.find(
+          (call: any[]) => call[1].messages[0].content.includes('Key path: items.1')
+        )?.[1].messages[0].content;
+
+        expect(systemPrompt).toBeDefined();
+        expect(systemPrompt).toContain('- 0: "First"');
+        expect(systemPrompt).toContain('- 2: "Third"');
+      });
+
+      it('should prefer siblings with similar key prefixes', async () => {
+        const input = {
+          section: {
+            starterLabel: 'Starter label',
+            starterHint: 'Starter hint',
+            alpha: 'Alpha',
+            beta: 'Beta',
+            gamma: 'Gamma',
+            starter: 'Starter'
+          }
+        };
+
+        await llmTranslator.translateObject(input, 'de');
+
+        const systemPrompt = mockAxios.post.mock.calls.find((call: any[]) =>
+          /Key path: section\.starter(\s|$)/.test(call[1].messages[0].content)
+        )?.[1].messages[0].content;
+
+        expect(systemPrompt).toBeDefined();
+        expect(systemPrompt).toContain('- starterLabel:');
+        expect(systemPrompt).toContain('- starterHint:');
+        expect(systemPrompt).not.toContain('- gamma:');
+      });
+    });
+  });
+
+  describe('translateObject context (non-LLM)', () => {
+    it('should use text-only cache keys for conventional engines', async () => {
+      const translate = require('translate');
+      translate.mockResolvedValue('Hallo');
+
+      const input = { server: { label: 'Hello' } };
+      await translator.translateObject(input, 'de');
+
+      expect(cacheManager.getCachedTranslation('Hello', 'de')).not.toBeNull();
+      expect(cacheManager.getCachedTranslation('server.label:Hello', 'de')).toBeNull();
     });
   });
 });

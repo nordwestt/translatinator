@@ -182,6 +182,56 @@ describe('Translatinator', () => {
       expect(await fs.pathExists(deFile)).toBe(true);
       expect(await fs.pathExists(frFile)).toBe(true);
     });
+
+    it('should flush locale files in batches while translating', async () => {
+      const batchConfig = {
+        ...config,
+        targetLanguages: ['de'],
+        saveBatchSize: 1,
+        showProgress: false
+      };
+      const batchTranslatinator = new Translatinator(batchConfig);
+      await batchTranslatinator.initialize();
+
+      mockTranslator.translateObject.mockReset();
+      mockTranslator.translateObject.mockImplementation(
+        async (
+          _obj: unknown,
+          _targetLang: string,
+          _sourceLang?: string,
+          _keyPath?: string[],
+          options?: { progress?: { onKeyTranslated?: Function; onProgress?: Function } }
+        ) => {
+          const translated = {
+            greeting: 'Hallo',
+            farewell: 'Auf Wiedersehen',
+            nested: {
+              welcome: 'Willkommen'
+            }
+          };
+
+          await options?.progress?.onKeyTranslated?.(['greeting'], 'Hallo');
+          await options?.progress?.onProgress?.(1, 3, 'greeting');
+          await options?.progress?.onKeyTranslated?.(['farewell'], 'Auf Wiedersehen');
+          await options?.progress?.onProgress?.(2, 3, 'farewell');
+          await options?.progress?.onKeyTranslated?.(['nested', 'welcome'], 'Willkommen');
+          await options?.progress?.onProgress?.(3, 3, 'nested.welcome');
+
+          return translated;
+        }
+      );
+
+      const writeJsonSpy = jest.spyOn(fs, 'writeJson');
+
+      await batchTranslatinator.translateAll();
+
+      const deWrites = writeJsonSpy.mock.calls.filter(
+        (call) => String(call[0]).endsWith('de.json')
+      );
+      expect(deWrites.length).toBeGreaterThan(1);
+
+      writeJsonSpy.mockRestore();
+    });
   });
 
   describe('file watching', () => {
@@ -260,9 +310,16 @@ describe('Translatinator', () => {
     });
 
     it('should throw error when getting usage fails', async () => {
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
       mockTranslator.getUsage.mockRejectedValue(new Error('Usage API Error'));
 
       await expect(translatinator.getUsageInfo()).rejects.toThrow('Usage API Error');
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        '[ERROR] Failed to get usage info:',
+        expect.any(Error)
+      );
+
+      consoleErrorSpy.mockRestore();
     });
   });
 

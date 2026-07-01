@@ -119,7 +119,6 @@ export class Translatinator {
       let keysTranslated = 0;
       const flushToDisk = async (): Promise<void> => {
         await fs.writeJson(targetFilePath, finalData, { spaces: 2 });
-        await this.cache.saveCache();
         pendingSave = 0;
       };
 

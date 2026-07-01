@@ -415,7 +415,8 @@ describe('TranslationService', () => {
         expect.objectContaining({
           model: 'translategemma',
           messages: expect.arrayContaining([
-            expect.objectContaining({ role: 'user' })
+            expect.objectContaining({ role: 'system' }),
+            expect.objectContaining({ role: 'user', content: 'Hello' })
           ]),
           stream: false
         }),
@@ -428,22 +429,16 @@ describe('TranslationService', () => {
     it('should construct the TranslateGemma prompt with language names and codes', async () => {
       await llmTranslator.translateText('Hello', 'de');
 
-      const callArgs = mockAxios.post.mock.calls[0];
-      const payload = callArgs[1];
-      const prompt = payload.messages[0].content;
-
-      expect(prompt).toContain('English (en) to German (de) translator');
-      expect(prompt).toContain('Hello');
-      expect(prompt).toMatch(/\n\n\nHello/);
+      const payload = mockAxios.post.mock.calls[0][1];
+      expect(payload.messages[0].content).toContain('English (en) to German (de) translator');
+      expect(payload.messages[1].content).toBe('Hello');
     });
 
     it('should handle region-specific language codes', async () => {
       await llmTranslator.translateText('Hello', 'de-DE', 'en-US');
 
-      const callArgs = mockAxios.post.mock.calls[0];
-      const prompt = callArgs[1].messages[0].content;
-
-      expect(prompt).toContain('English (en-US) to German (de-DE) translator');
+      const systemPrompt = mockAxios.post.mock.calls[0][1].messages[0].content;
+      expect(systemPrompt).toContain('English (en-US) to German (de-DE) translator');
     });
 
     it('should include Bearer token when API key is provided', async () => {
@@ -552,10 +547,9 @@ describe('TranslationService', () => {
 
         await llmTranslator.translateText('Hello {name}', 'de');
 
-        const callArgs = mockAxios.post.mock.calls[0];
-        const prompt = callArgs[1].messages[0].content;
-        expect(prompt).toContain('\x00TMPL_0\x00');
-        expect(prompt).not.toContain('{name}');
+        const userMessage = mockAxios.post.mock.calls[0][1].messages[1].content;
+        expect(userMessage).toContain('\x00TMPL_0\x00');
+        expect(userMessage).not.toContain('{name}');
       });
 
       it('should restore cached LLM translation with template variables', async () => {
@@ -688,6 +682,19 @@ describe('TranslationService', () => {
         });
       });
 
+      it('should send source text only in the user message when context is present', async () => {
+        await llmTranslator.translateObject(
+          { dashboard: { title: 'Overview' } },
+          'it'
+        );
+
+        const payload = mockAxios.post.mock.calls[0][1];
+        expect(payload.messages[0].role).toBe('system');
+        expect(payload.messages[0].content).toContain('Key path: dashboard.title');
+        expect(payload.messages[1].role).toBe('user');
+        expect(payload.messages[1].content).toBe('Overview');
+      });
+
       it('should include key path and sibling strings when translating nested objects', async () => {
         const input = {
           server: {
@@ -701,11 +708,11 @@ describe('TranslationService', () => {
 
         await llmTranslator.translateObject(input, 'it');
 
-        const prompt = mockAxios.post.mock.calls[0][1].messages[0].content;
-        expect(prompt).toContain('Key path: server.deployment.starter');
-        expect(prompt).toContain('- pro: "Pro"');
-        expect(prompt).toContain('- enterprise: "Enterprise"');
-        expect(prompt).toContain('Starter');
+        const payload = mockAxios.post.mock.calls[0][1];
+        expect(payload.messages[0].content).toContain('Key path: server.deployment.starter');
+        expect(payload.messages[0].content).toContain('- pro: "Pro"');
+        expect(payload.messages[0].content).toContain('- enterprise: "Enterprise"');
+        expect(payload.messages[1].content).toBe('Starter');
       });
 
       it('should cap sibling context at maxSiblingContext (default 3)', async () => {
@@ -722,22 +729,22 @@ describe('TranslationService', () => {
 
         await llmTranslator.translateObject(input, 'de');
 
-        const prompt = mockAxios.post.mock.calls.find(
+        const systemPrompt = mockAxios.post.mock.calls.find(
           (call: any[]) => call[1].messages[0].content.includes('Key path: section.target')
         )?.[1].messages[0].content;
 
-        expect(prompt).toBeDefined();
-        const siblingLines = prompt.match(/^- \w+: "/gm) || [];
+        expect(systemPrompt).toBeDefined();
+        const siblingLines = systemPrompt.match(/^- \w+: "/gm) || [];
         expect(siblingLines.length).toBeLessThanOrEqual(3);
-        expect(prompt).not.toContain('- target: "Target"');
+        expect(systemPrompt).not.toContain('- target: "Target"');
       });
 
       it('should not include context section for direct translateText calls', async () => {
         await llmTranslator.translateText('Hello', 'de');
 
-        const prompt = mockAxios.post.mock.calls[0][1].messages[0].content;
-        expect(prompt).not.toContain('Key path:');
-        expect(prompt).not.toContain('software UI translation file');
+        const systemPrompt = mockAxios.post.mock.calls[0][1].messages[0].content;
+        expect(systemPrompt).not.toContain('Key path:');
+        expect(mockAxios.post.mock.calls[0][1].messages[1].content).toBe('Hello');
       });
 
       it('should use path-scoped cache keys for the same text at different paths', async () => {
@@ -788,11 +795,11 @@ describe('TranslationService', () => {
 
         await llmTranslator.translateObject(input, 'de');
 
-        const prompt = mockAxios.post.mock.calls.find(
+        const systemPrompt = mockAxios.post.mock.calls.find(
           (call: any[]) => call[1].messages[0].content.includes('Key path: section.target')
         )?.[1].messages[0].content;
 
-        expect(prompt).toContain('- label: "Say \\"hello\\""');
+        expect(systemPrompt).toContain('- label: "Say \\"hello\\""');
       });
 
       it('should not include sibling context when maxSiblingContext is 0', async () => {
@@ -818,12 +825,12 @@ describe('TranslationService', () => {
           'de'
         );
 
-        const prompt = mockAxios.post.mock.calls.find((call: any[]) =>
+        const systemPrompt = mockAxios.post.mock.calls.find((call: any[]) =>
           /Key path: section\.target(\s|$)/.test(call[1].messages[0].content)
         )?.[1].messages[0].content;
 
-        expect(prompt).toBeDefined();
-        expect(prompt).not.toContain('Related strings in the same section');
+        expect(systemPrompt).toBeDefined();
+        expect(systemPrompt).not.toContain('Related strings:');
       });
 
       it('should include adjacent array strings as sibling context', async () => {
@@ -833,13 +840,13 @@ describe('TranslationService', () => {
 
         await llmTranslator.translateObject(input, 'de');
 
-        const prompt = mockAxios.post.mock.calls.find(
+        const systemPrompt = mockAxios.post.mock.calls.find(
           (call: any[]) => call[1].messages[0].content.includes('Key path: items.1')
         )?.[1].messages[0].content;
 
-        expect(prompt).toBeDefined();
-        expect(prompt).toContain('- 0: "First"');
-        expect(prompt).toContain('- 2: "Third"');
+        expect(systemPrompt).toBeDefined();
+        expect(systemPrompt).toContain('- 0: "First"');
+        expect(systemPrompt).toContain('- 2: "Third"');
       });
 
       it('should prefer siblings with similar key prefixes', async () => {
@@ -856,14 +863,14 @@ describe('TranslationService', () => {
 
         await llmTranslator.translateObject(input, 'de');
 
-        const prompt = mockAxios.post.mock.calls.find((call: any[]) =>
+        const systemPrompt = mockAxios.post.mock.calls.find((call: any[]) =>
           /Key path: section\.starter(\s|$)/.test(call[1].messages[0].content)
         )?.[1].messages[0].content;
 
-        expect(prompt).toBeDefined();
-        expect(prompt).toContain('- starterLabel:');
-        expect(prompt).toContain('- starterHint:');
-        expect(prompt).not.toContain('- gamma:');
+        expect(systemPrompt).toBeDefined();
+        expect(systemPrompt).toContain('- starterLabel:');
+        expect(systemPrompt).toContain('- starterHint:');
+        expect(systemPrompt).not.toContain('- gamma:');
       });
     });
   });

@@ -181,20 +181,14 @@ export class TranslationService {
   private buildContextSection(context?: TranslationContext): string {
     if (!context?.keyPath?.length) return '';
 
-    let section = `This string comes from a software UI translation file (JSON i18n).
-
-Key path: ${context.keyPath.join('.')}`;
+    let section = `Key path: ${context.keyPath.join('.')}`;
 
     if (context.siblings && context.siblings.length > 0) {
-      section += '\nRelated strings in the same section:';
+      section += '\nRelated strings:';
       for (const sibling of context.siblings) {
         section += `\n- ${sibling.key}: ${this.formatPromptValue(sibling.value)}`;
       }
     }
-
-    section += `\n\nThe key path and related strings indicate the intended meaning. Translate the string below accordingly. Do not translate it as unrelated senses (e.g. food) when the context indicates a technical or product label.
-
-Translate ONLY the following string:`;
 
     return section;
   }
@@ -272,20 +266,11 @@ Translate ONLY the following string:`;
     const targetName = this.getLanguageName(targetLang);
     const contextSection = this.buildContextSection(context);
 
-    const baseInstructions = `You are a professional ${sourceName} (${sourceLang}) to ${targetName} (${targetLang}) translator. Your goal is to accurately convey the meaning and nuances of the original ${sourceName} text while adhering to ${targetName} grammar, vocabulary, and cultural sensitivities.
-Produce only the ${targetName} translation, without any additional explanations or commentary, and leave all \x00TMPL_X\x00 placeholders intact. Please translate the following ${sourceName} text into ${targetName}:`;
+    const baseInstructions = `You are a professional ${sourceName} (${sourceLang}) to ${targetName} (${targetLang}) translator. Translate only the user message into ${targetName}. Output nothing else—no explanations, labels, or metadata. Leave all \x00TMPL_X\x00 placeholders unchanged.`;
 
-    const prompt = contextSection
-      ? `${baseInstructions}
-
-${contextSection}
-
-
-${text}`
-      : `${baseInstructions}
-
-
-${text}`;
+    const systemContent = contextSection
+      ? `${baseInstructions}\n\nUse this metadata to pick the correct meaning (do not translate the metadata itself):\n${contextSection}`
+      : baseInstructions;
 
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (this.config.apiKey) {
@@ -294,7 +279,10 @@ ${text}`;
 
     const body: Record<string, unknown> = {
       model: oc.model,
-      messages: [{ role: 'user', content: prompt }],
+      messages: [
+        { role: 'system', content: systemContent },
+        { role: 'user', content: text }
+      ],
       stream: false
     };
     if (this.config.llm?.numCtx !== undefined) {
